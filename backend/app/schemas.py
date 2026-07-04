@@ -1,0 +1,80 @@
+from datetime import date as date_type
+from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
+
+
+# ---------- Garment ----------
+
+
+class GarmentBase(BaseModel):
+    name: str
+    category: str
+
+
+class Garment(GarmentBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    image_path: str
+    created_at: datetime
+
+
+# ---------- OutfitItem ----------
+
+
+class OutfitItemCreate(BaseModel):
+    garment_id: int
+    position_x: float = 0.5
+    position_y: float = 0.5
+    scale: float = 1.0
+
+
+class OutfitItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    garment_id: int
+    position_x: float
+    position_y: float
+    scale: float
+    garment: Garment
+
+
+# ---------- Outfit ----------
+
+
+class OutfitCreate(BaseModel):
+    date: date_type
+    note: Optional[str] = None
+    items: List[OutfitItemCreate]
+
+
+class Outfit(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    date: date_type
+    note: Optional[str] = None
+    selfie_path: Optional[str] = None
+    created_at: datetime
+    items: List[OutfitItem]
+
+
+# ---------- Calendar ----------
+
+
+class CalendarDay(BaseModel):
+    date: date_type
+    outfit_id: int
+    has_selfie: bool
+    preview_paths: List[str]
+
+
+class CalendarResponse(BaseModel):
+    year: int
+    month: int
+    days: List[CalendarDay]

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Database
+backend/gardrobe.db
+
+# Uploaded media
+backend/uploads/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Scratch
+.frugal-fable/
+
+# OS
+.DS_Store
+
+# Local experiments
+output.png
+output2.png
+photo.avif
