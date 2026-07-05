@@ -4,3 +4,8 @@ sqlalchemy
 python-multipart
 withoutbg
 Pillow
+PyJWT
+bcrypt
+alembic
+# For Postgres deployments only (DATABASE_URL=postgresql+psycopg://...):
+# psycopg[binary]

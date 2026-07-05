@@ -5,13 +5,19 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
+from ..auth import get_current_user
 from ..database import get_db
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
 
 @router.get("/", response_model=schemas.CalendarResponse)
-def get_calendar(year: int, month: int, db: Session = Depends(get_db)):
+def get_calendar(
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     if not (1 <= month <= 12):
         raise HTTPException(status_code=400, detail="month must be between 1 and 12")
 
@@ -21,7 +27,11 @@ def get_calendar(year: int, month: int, db: Session = Depends(get_db)):
     outfits = (
         db.query(models.Outfit)
         .options(joinedload(models.Outfit.items).joinedload(models.OutfitItem.garment))
-        .filter(models.Outfit.date >= start, models.Outfit.date <= end)
+        .filter(
+            models.Outfit.user_id == current_user.id,
+            models.Outfit.date >= start,
+            models.Outfit.date <= end,
+        )
         .order_by(models.Outfit.created_at.desc(), models.Outfit.id.desc())
         .all()
     )

@@ -20,6 +20,7 @@ export default function OotdPage() {
   const [note, setNote] = useState('')
   const [selfie, setSelfie] = useState(null)
   const [selfiePreview, setSelfiePreview] = useState(null)
+  const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
   const canvasRef = useRef(null)
   const showToast = useToast()
@@ -94,6 +95,15 @@ export default function OotdPage() {
       ),
     )
 
+  const setItemScale = (key, scale) =>
+    setItems((prev) =>
+      prev.map((it) =>
+        it.key === key
+          ? { ...it, scale: Math.min(2.5, Math.max(0.3, +scale.toFixed(2))) }
+          : it,
+      ),
+    )
+
   const removeItem = (key) => {
     setItems((prev) => prev.filter((it) => it.key !== key))
     setSelectedKey((k) => (k === key ? null : k))
@@ -113,6 +123,7 @@ export default function OotdPage() {
     setSelectedKey(null)
     setNote('')
     setSelfie(null)
+    setIsPublic(false)
     setSelfiePreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
       return null
@@ -132,6 +143,7 @@ export default function OotdPage() {
           position_y: it.position_y,
           scale: it.scale,
         })),
+        is_public: isPublic,
       }
       const res = await client.post('/outfits/', body)
       if (selfie) {
@@ -179,6 +191,7 @@ export default function OotdPage() {
               selectedKey={selectedKey}
               onSelect={setSelectedKey}
               onScale={scaleItem}
+              onSetScale={setItemScale}
               onRemove={removeItem}
               canvasRef={canvasRef}
             />
@@ -225,6 +238,20 @@ export default function OotdPage() {
                   )}
                 </label>
               </div>
+
+              <label className="share-toggle">
+                <input
+                  type="checkbox"
+                  className="visually-hidden"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                />
+                <span
+                  className={`share-toggle__pill${isPublic ? ' share-toggle__pill--active' : ''}`}
+                >
+                  {isPublic ? 'Shared to feed' : 'Share to feed'}
+                </span>
+              </label>
 
               <button
                 type="button"

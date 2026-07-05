@@ -1,13 +1,31 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const links = [
   { to: '/', label: 'Closet', end: true },
   { to: '/upload', label: 'Upload' },
   { to: '/ootd', label: 'OOTD' },
   { to: '/calendar', label: 'Calendar' },
+  { to: '/feed', label: 'Feed' },
 ]
 
 export default function Navbar() {
+  const location = useLocation()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+
+  if (['/login', '/signup'].includes(location.pathname)) {
+    return null
+  }
+
+  const handleLogout = async () => {
+    setOpen(false)
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <header className="navbar">
       <div className="navbar__inner">
@@ -28,6 +46,47 @@ export default function Navbar() {
             </NavLink>
           ))}
         </nav>
+
+        {user && (
+          <div className="navbar__user">
+            <button
+              type="button"
+              className="navbar__user-trigger"
+              onClick={() => setOpen((o) => !o)}
+            >
+              {user.avatar_path ? (
+                <img className="avatar avatar--sm" src={user.avatar_path} alt="" />
+              ) : (
+                <span className="avatar avatar--sm avatar--initial">
+                  {user.username[0]?.toUpperCase()}
+                </span>
+              )}
+              <span className="navbar__username">{user.username}</span>
+            </button>
+
+            {open && (
+              <>
+                <div className="navbar__dropdown-scrim" onClick={() => setOpen(false)} />
+                <div className="navbar__dropdown">
+                  <NavLink
+                    to={`/u/${user.username}`}
+                    className="navbar__dropdown-item"
+                    onClick={() => setOpen(false)}
+                  >
+                    Profile
+                  </NavLink>
+                  <button
+                    type="button"
+                    className="navbar__dropdown-item"
+                    onClick={handleLogout}
+                  >
+                    Log out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </header>
   )

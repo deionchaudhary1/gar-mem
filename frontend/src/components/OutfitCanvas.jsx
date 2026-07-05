@@ -2,12 +2,40 @@ import { useDroppable } from '@dnd-kit/core'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 
-function CanvasItem({ item, selected, onSelect, onScale, onRemove }) {
+const MIN_SCALE = 0.3
+const MAX_SCALE = 2.5
+
+function CanvasItem({ item, selected, onSelect, onScale, onSetScale, onRemove, canvasRef }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `canvas-${item.key}`,
       data: { type: 'canvas-item', key: item.key },
     })
+
+  const handleResizeStart = (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const rect = canvasRef?.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const centerX = rect.left + item.position_x * rect.width
+    const centerY = rect.top + item.position_y * rect.height
+    const startDist =
+      Math.hypot(e.clientX - centerX, e.clientY - centerY) || 1
+    const startScale = item.scale
+
+    const onMove = (moveEvent) => {
+      const dist = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY)
+      const next = (startScale * dist) / startDist
+      onSetScale(item.key, Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)))
+    }
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
 
   const style = {
     left: `${item.position_x * 100}%`,
@@ -49,6 +77,14 @@ function CanvasItem({ item, selected, onSelect, onScale, onRemove }) {
           </button>
         </div>
       )}
+      {selected && (
+        <div
+          className="canvas-item__resize-handle"
+          onPointerDown={handleResizeStart}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Resize"
+        />
+      )}
     </div>
   )
 }
@@ -58,6 +94,7 @@ export default function OutfitCanvas({
   selectedKey,
   onSelect,
   onScale,
+  onSetScale,
   onRemove,
   canvasRef,
 }) {
@@ -84,7 +121,9 @@ export default function OutfitCanvas({
           selected={item.key === selectedKey}
           onSelect={onSelect}
           onScale={onScale}
+          onSetScale={onSetScale}
           onRemove={onRemove}
+          canvasRef={canvasRef}
         />
       ))}
     </div>

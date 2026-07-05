@@ -1,38 +1,79 @@
-import os
+import io
 import uuid
 from datetime import date as date_type
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy.orm import Session, joinedload
 from PIL import Image
+from sqlalchemy.orm import Session, joinedload
 
 from .. import models, schemas
+from ..auth import get_current_user
 from ..database import get_db
+from ..serializers import feed_outfit
+from ..storage import storage
 
 router = APIRouter(prefix="/api/outfits", tags=["outfits"])
-
-BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTFITS_DIR = os.path.join(BACKEND_DIR, "uploads", "outfits")
 
 ITEMS_QUERY_OPTS = joinedload(models.Outfit.items).joinedload(models.OutfitItem.garment)
 
 
+def _load_outfit(outfit_id: int, db: Session) -> models.Outfit | None:
+    return (
+        db.query(models.Outfit)
+        .options(ITEMS_QUERY_OPTS, joinedload(models.Outfit.user))
+        .filter(models.Outfit.id == outfit_id)
+        .first()
+    )
+
+
+def _get_owned_outfit(
+    outfit_id: int, db: Session, current_user: models.User
+) -> models.Outfit:
+    # Other users' outfits 404 (not 403) so ids don't leak existence.
+    outfit = (
+        db.query(models.Outfit)
+        .filter(
+            models.Outfit.id == outfit_id,
+            models.Outfit.user_id == current_user.id,
+        )
+        .first()
+    )
+    if outfit is None:
+        raise HTTPException(status_code=404, detail="outfit not found")
+    return outfit
+
+
 @router.post("/", response_model=schemas.Outfit, status_code=201)
-def create_outfit(payload: schemas.OutfitCreate, db: Session = Depends(get_db)):
+def create_outfit(
+    payload: schemas.OutfitCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     if not payload.items:
         raise HTTPException(status_code=400, detail="items must not be empty")
 
     garment_ids = [item.garment_id for item in payload.items]
     existing_count = (
-        db.query(models.Garment).filter(models.Garment.id.in_(garment_ids)).count()
+        db.query(models.Garment)
+        .filter(
+            models.Garment.id.in_(garment_ids),
+            models.Garment.user_id == current_user.id,
+        )
+        .count()
     )
     if existing_count != len(set(garment_ids)):
         raise HTTPException(status_code=400, detail="one or more garment_id not found")
 
-    outfit = models.Outfit(date=payload.date, note=payload.note)
+    outfit = models.Outfit(
+        user_id=current_user.id,
+        date=payload.date,
+        note=payload.note,
+        is_public=payload.is_public,
+    )
     for item in payload.items:
         outfit.items.append(
             models.OutfitItem(
+                user_id=current_user.id,
                 garment_id=item.garment_id,
                 position_x=item.position_x,
                 position_y=item.position_y,
@@ -41,15 +82,8 @@ def create_outfit(payload: schemas.OutfitCreate, db: Session = Depends(get_db)):
         )
     db.add(outfit)
     db.commit()
-    db.refresh(outfit)
 
-    outfit = (
-        db.query(models.Outfit)
-        .options(ITEMS_QUERY_OPTS)
-        .filter(models.Outfit.id == outfit.id)
-        .first()
-    )
-    return outfit
+    return _load_outfit(outfit.id, db)
 
 
 @router.get("/", response_model=list[schemas.Outfit])
@@ -57,8 +91,13 @@ def list_outfits(
     date: date_type | None = None,
     month: str | None = None,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    query = db.query(models.Outfit).options(ITEMS_QUERY_OPTS)
+    query = (
+        db.query(models.Outfit)
+        .options(ITEMS_QUERY_OPTS)
+        .filter(models.Outfit.user_id == current_user.id)
+    )
 
     if date is not None:
         query = query.filter(models.Outfit.date == date)
@@ -82,31 +121,49 @@ def list_outfits(
     return query.all()
 
 
-@router.get("/{outfit_id}", response_model=schemas.Outfit)
-def get_outfit(outfit_id: int, db: Session = Depends(get_db)):
-    outfit = (
-        db.query(models.Outfit)
-        .options(ITEMS_QUERY_OPTS)
-        .filter(models.Outfit.id == outfit_id)
-        .first()
-    )
-    if outfit is None:
+@router.get("/{outfit_id}", response_model=schemas.FeedOutfit)
+def get_outfit(
+    outfit_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    outfit = _load_outfit(outfit_id, db)
+    if outfit is None or (
+        outfit.user_id != current_user.id and not outfit.is_public
+    ):
         raise HTTPException(status_code=404, detail="outfit not found")
-    return outfit
+    return feed_outfit(outfit, current_user.id, db)
+
+
+@router.patch("/{outfit_id}", response_model=schemas.Outfit)
+def update_outfit(
+    outfit_id: int,
+    payload: schemas.OutfitUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    outfit = _get_owned_outfit(outfit_id, db, current_user)
+
+    if "note" in payload.model_fields_set:
+        outfit.note = payload.note
+    if payload.is_public is not None:
+        outfit.is_public = payload.is_public
+
+    db.add(outfit)
+    db.commit()
+
+    return _load_outfit(outfit_id, db)
 
 
 @router.delete("/{outfit_id}", status_code=204)
-def delete_outfit(outfit_id: int, db: Session = Depends(get_db)):
-    outfit = db.query(models.Outfit).filter(models.Outfit.id == outfit_id).first()
-    if outfit is None:
-        raise HTTPException(status_code=404, detail="outfit not found")
+def delete_outfit(
+    outfit_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    outfit = _get_owned_outfit(outfit_id, db, current_user)
 
-    if outfit.selfie_path:
-        selfie_fs_path = os.path.join(BACKEND_DIR, outfit.selfie_path.lstrip("/"))
-        try:
-            os.remove(selfie_fs_path)
-        except OSError:
-            pass
+    storage.delete(outfit.selfie_path)
 
     db.delete(outfit)
     db.commit()
@@ -115,13 +172,12 @@ def delete_outfit(outfit_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{outfit_id}/selfie", response_model=schemas.Outfit)
 async def upload_selfie(
-    outfit_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)
+    outfit_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    outfit = db.query(models.Outfit).filter(models.Outfit.id == outfit_id).first()
-    if outfit is None:
-        raise HTTPException(status_code=404, detail="outfit not found")
-
-    os.makedirs(OUTFITS_DIR, exist_ok=True)
+    outfit = _get_owned_outfit(outfit_id, db, current_user)
 
     contents = await file.read()
 
@@ -137,37 +193,20 @@ async def upload_selfie(
 
     if orig_ext in allowed_exts:
         ext = "jpg" if orig_ext == "jpeg" else orig_ext
-        filename = f"{filename_uuid}.{ext}"
-        file_path = os.path.join(OUTFITS_DIR, filename)
-        with open(file_path, "wb") as f:
-            f.write(contents)
+        selfie_path = storage.save("outfits", f"{filename_uuid}.{ext}", contents)
     else:
         # convert to jpeg via Pillow
-        import io
-
         image = Image.open(io.BytesIO(contents))
         if image.mode in ("RGBA", "P", "LA"):
             image = image.convert("RGB")
-        filename = f"{filename_uuid}.jpg"
-        file_path = os.path.join(OUTFITS_DIR, filename)
-        image.save(file_path, format="JPEG")
+        buf = io.BytesIO()
+        image.save(buf, format="JPEG")
+        selfie_path = storage.save("outfits", f"{filename_uuid}.jpg", buf.getvalue())
 
-    outfit.selfie_path = f"/uploads/outfits/{filename}"
+    outfit.selfie_path = selfie_path
     db.add(outfit)
     db.commit()
-    db.refresh(outfit)
 
-    if old_selfie_path:
-        old_fs_path = os.path.join(BACKEND_DIR, old_selfie_path.lstrip("/"))
-        try:
-            os.remove(old_fs_path)
-        except OSError:
-            pass
+    storage.delete(old_selfie_path)
 
-    outfit = (
-        db.query(models.Outfit)
-        .options(ITEMS_QUERY_OPTS)
-        .filter(models.Outfit.id == outfit.id)
-        .first()
-    )
-    return outfit
+    return _load_outfit(outfit_id, db)
