@@ -69,7 +69,7 @@ export default function FeedCard({ outfit }) {
           className={`feed-card__like${liked ? ' feed-card__like--active' : ''}`}
           onClick={toggleLike}
         >
-          {liked ? '♥' : '♡'} {likeCount}
+          <span className="feed-card__heart">{liked ? '♥' : '♡'}</span> {likeCount}
         </button>
         <button
           type="button"

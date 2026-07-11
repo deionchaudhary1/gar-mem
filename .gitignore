@@ -23,3 +23,7 @@ frontend/dist/
 output.png
 output2.png
 photo.avif
+
+# Planning docs / session history (not part of the shipped project)
+plans/
+history/

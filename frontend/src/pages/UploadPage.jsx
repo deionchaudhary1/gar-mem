@@ -77,6 +77,21 @@ export default function UploadPage() {
             <img src={preview} alt="Preview" className="dropzone__preview" />
           ) : (
             <div className="dropzone__hint">
+              <svg
+                className="dropzone__hanger"
+                width="56"
+                height="36"
+                viewBox="0 0 64 40"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M32 4a5 5 0 1 1 5 5c-3 0-5 2-5 5" />
+                <path d="M32 14 6 32h52L32 14Z" />
+              </svg>
               <span className="dropzone__title">Drop an image here</span>
               <span className="dropzone__sub">or click to browse</span>
             </div>

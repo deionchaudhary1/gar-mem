@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import client from '../api/client.js'
 import CategorySection from '../components/CategorySection.jsx'
+import FloatingWardrobe from '../components/FloatingWardrobe.jsx'
 import { CATEGORIES } from '../constants.js'
 import { useToast } from '../context/ToastContext.jsx'
 
@@ -72,7 +73,27 @@ export default function HomePage() {
       {error && <p className="loading">{error}</p>}
 
       {isEmpty && (
-        <p className="empty-state">Your closet is empty — add a first piece.</p>
+        <div className="empty-state">
+          <FloatingWardrobe />
+          <svg
+            className="empty-state__hanger"
+            width="72"
+            height="46"
+            viewBox="0 0 64 40"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M32 4a5 5 0 1 1 5 5c-3 0-5 2-5 5" />
+            <path d="M32 14 6 32h52L32 14Z" />
+          </svg>
+          <p className="empty-state__text">
+            Your closet is empty — add a first piece.
+          </p>
+        </div>
       )}
 
       {!loading &&

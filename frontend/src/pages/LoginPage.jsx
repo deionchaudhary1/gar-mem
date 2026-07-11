@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import FloatingWardrobe from '../components/FloatingWardrobe.jsx'
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth()
@@ -33,6 +34,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      <FloatingWardrobe />
       <div className="auth-card">
         <h1 className="auth-title">Welcome back.</h1>
         <form className="auth-form" onSubmit={submit}>

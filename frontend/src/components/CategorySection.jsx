@@ -9,8 +9,8 @@ export default function CategorySection({ category, garments, onDelete }) {
         <p className="category-section__empty">Nothing here yet.</p>
       ) : (
         <div className="garment-grid">
-          {garments.map((g) => (
-            <GarmentCard key={g.id} garment={g} onDelete={onDelete} />
+          {garments.map((g, i) => (
+            <GarmentCard key={g.id} garment={g} onDelete={onDelete} index={i} />
           ))}
         </div>
       )}
