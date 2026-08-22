@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
 
+// App-wide toast notifications: any component calls useToast() to get a
+// showToast(message) function, and a single toast element (rendered here,
+// mounted once at the provider) fades in/out for ~2.9s per call.
 const ToastContext = createContext(null)
 
 export function ToastProvider({ children }) {

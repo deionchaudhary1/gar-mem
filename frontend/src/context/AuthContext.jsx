@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import client from '../api/client.js'
 
+// Session state for the whole app, backed by the HttpOnly JWT cookie the
+// backend sets on login/signup. On mount it asks /auth/me to see if a
+// session cookie is already valid; a 401 response interceptor also clears
+// `user` if a session expires mid-session. Components read `user`/`loading`
+// and call login/signup/logout/refresh via useAuth().
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
