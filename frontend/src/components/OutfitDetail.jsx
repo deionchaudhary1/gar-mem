@@ -1,7 +1,3 @@
-import { useEffect, useState } from 'react'
-import client from '../api/client.js'
-import { useToast } from '../context/ToastContext.jsx'
-
 function formatDate(iso) {
   if (!iso) return ''
   const [y, m, d] = iso.split('-').map(Number)
@@ -15,29 +11,6 @@ function formatDate(iso) {
 }
 
 export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
-  const [isPublic, setIsPublic] = useState(false)
-  const [togglingPublic, setTogglingPublic] = useState(false)
-  const showToast = useToast()
-
-  useEffect(() => {
-    setIsPublic(Boolean(outfit?.is_public))
-  }, [outfit])
-
-  const toggleVisibility = async () => {
-    if (!outfit || togglingPublic) return
-    const next = !isPublic
-    setTogglingPublic(true)
-    try {
-      const res = await client.patch(`/outfits/${outfit.id}`, { is_public: next })
-      setIsPublic(res.data.is_public)
-      showToast(res.data.is_public ? 'Shared to feed' : 'Made private')
-    } catch {
-      showToast('Could not update visibility')
-    } finally {
-      setTogglingPublic(false)
-    }
-  }
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
@@ -90,15 +63,6 @@ export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
                   />
                 )}
                 {outfit.note && <p className="modal__note">{outfit.note}</p>}
-
-                <button
-                  type="button"
-                  className={`visibility-toggle${isPublic ? ' visibility-toggle--public' : ''}`}
-                  onClick={toggleVisibility}
-                  disabled={togglingPublic}
-                >
-                  {isPublic ? 'Shared to feed' : 'Private'}
-                </button>
 
                 <button
                   type="button"

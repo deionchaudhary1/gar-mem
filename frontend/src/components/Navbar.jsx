@@ -3,11 +3,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const links = [
-  { to: '/', label: 'Closet', end: true },
-  { to: '/upload', label: 'Upload' },
+  { to: '/', label: 'closet', end: true },
+  { to: '/upload', label: 'upload' },
   { to: '/ootd', label: 'OOTD' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/feed', label: 'Feed' },
+  { to: '/calendar', label: 'calendar' },
 ]
 
 export default function Navbar() {
@@ -30,7 +29,7 @@ export default function Navbar() {
     <header className="navbar">
       <div className="navbar__inner">
         <NavLink to="/" className="wordmark">
-          Garment Memory
+          garment memory
         </NavLink>
         <nav className="navlinks">
           {links.map((l) => (
@@ -68,13 +67,6 @@ export default function Navbar() {
               <>
                 <div className="navbar__dropdown-scrim" onClick={() => setOpen(false)} />
                 <div className="navbar__dropdown">
-                  <NavLink
-                    to={`/u/${user.username}`}
-                    className="navbar__dropdown-item"
-                    onClick={() => setOpen(false)}
-                  >
-                    Profile
-                  </NavLink>
                   <button
                     type="button"
                     className="navbar__dropdown-item"

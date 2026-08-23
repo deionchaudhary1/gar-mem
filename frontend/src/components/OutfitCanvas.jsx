@@ -1,16 +1,15 @@
-import { useDroppable } from '@dnd-kit/core'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { CATEGORIES, CATEGORY_LABELS, CATEGORY_ZONES } from '../constants.js'
 
 const MIN_SCALE = 0.3
 const MAX_SCALE = 2.5
 
-function CanvasItem({ item, selected, onSelect, onScale, onSetScale, onRemove, canvasRef }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: `canvas-${item.key}`,
-      data: { type: 'canvas-item', key: item.key },
-    })
+function CanvasItem({ slot, category, selected, onSelect, onScale, onSetScale, onRemove, canvasRef }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `slot-${category}`,
+    data: { category },
+  })
 
   const handleResizeStart = (e) => {
     e.stopPropagation()
@@ -18,16 +17,15 @@ function CanvasItem({ item, selected, onSelect, onScale, onSetScale, onRemove, c
     const rect = canvasRef?.current?.getBoundingClientRect()
     if (!rect) return
 
-    const centerX = rect.left + item.position_x * rect.width
-    const centerY = rect.top + item.position_y * rect.height
-    const startDist =
-      Math.hypot(e.clientX - centerX, e.clientY - centerY) || 1
-    const startScale = item.scale
+    const centerX = rect.left + slot.position_x * rect.width
+    const centerY = rect.top + slot.position_y * rect.height
+    const startDist = Math.hypot(e.clientX - centerX, e.clientY - centerY) || 1
+    const startScale = slot.scale
 
     const onMove = (moveEvent) => {
       const dist = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY)
       const next = (startScale * dist) / startDist
-      onSetScale(item.key, Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)))
+      onSetScale(category, Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)))
     }
     const onUp = () => {
       window.removeEventListener('pointermove', onMove)
@@ -38,11 +36,11 @@ function CanvasItem({ item, selected, onSelect, onScale, onSetScale, onRemove, c
   }
 
   const style = {
-    left: `${item.position_x * 100}%`,
-    top: `${item.position_y * 100}%`,
+    left: `${slot.position_x * 100}%`,
+    top: `${slot.position_y * 100}%`,
     transform: `translate(-50%, -50%) ${
       transform ? CSS.Translate.toString(transform) : ''
-    } scale(${item.scale})`,
+    } scale(${slot.scale})`,
     zIndex: selected ? 20 : isDragging ? 15 : 10,
   }
 
@@ -53,24 +51,24 @@ function CanvasItem({ item, selected, onSelect, onScale, onSetScale, onRemove, c
       style={style}
       onClick={(e) => {
         e.stopPropagation()
-        onSelect(item.key)
+        onSelect(category)
       }}
       {...listeners}
       {...attributes}
     >
-      <img src={item.garment.image_path} alt={item.garment.name} draggable={false} />
+      <img src={slot.garment.image_path} alt={slot.garment.name} draggable={false} />
       {selected && (
         <div className="canvas-item__controls" onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => onScale(item.key, -0.1)} aria-label="Smaller">
+          <button type="button" onClick={() => onScale(category, -0.1)} aria-label="Smaller">
             −
           </button>
-          <button type="button" onClick={() => onScale(item.key, 0.1)} aria-label="Larger">
+          <button type="button" onClick={() => onScale(category, 0.1)} aria-label="Larger">
             +
           </button>
           <button
             type="button"
             className="canvas-item__remove"
-            onClick={() => onRemove(item.key)}
+            onClick={() => onRemove(category)}
             aria-label="Remove"
           >
             ×
@@ -90,42 +88,59 @@ function CanvasItem({ item, selected, onSelect, onScale, onSetScale, onRemove, c
 }
 
 export default function OutfitCanvas({
-  items,
-  selectedKey,
+  slots,
+  selected,
   onSelect,
   onScale,
   onSetScale,
   onRemove,
   canvasRef,
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'canvas' })
-
-  const setRefs = (node) => {
-    setNodeRef(node)
-    if (canvasRef) canvasRef.current = node
-  }
+  const isEmpty = CATEGORIES.every((c) => !slots[c])
 
   return (
-    <div
-      ref={setRefs}
-      className={`outfit-canvas${isOver ? ' outfit-canvas--over' : ''}`}
-      onClick={() => onSelect(null)}
-    >
-      {items.length === 0 && (
-        <p className="outfit-canvas__hint">Drag pieces here to build a look.</p>
+    <div className="outfit-stage">
+      <div ref={canvasRef} className="outfit-canvas" onClick={() => onSelect(null)}>
+        {CATEGORIES.map((category) => {
+          const zone = CATEGORY_ZONES[category]
+          return (
+            <div
+              key={category}
+              className="zone"
+              style={{
+                top: `${zone.top * 100}%`,
+                height: `${(zone.bottom - zone.top) * 100}%`,
+              }}
+            >
+              {!slots[category] && (
+                <span className="zone__label">{CATEGORY_LABELS[category]}</span>
+              )}
+            </div>
+          )
+        })}
+
+        {CATEGORIES.map((category) =>
+          slots[category] ? (
+            <CanvasItem
+              key={category}
+              category={category}
+              slot={slots[category]}
+              selected={category === selected}
+              onSelect={onSelect}
+              onScale={onScale}
+              onSetScale={onSetScale}
+              onRemove={onRemove}
+              canvasRef={canvasRef}
+            />
+          ) : null,
+        )}
+      </div>
+
+      {isEmpty && (
+        <p className="outfit-canvas__hint">
+          Click a piece — or roll a die — to dress each slot.
+        </p>
       )}
-      {items.map((item) => (
-        <CanvasItem
-          key={item.key}
-          item={item}
-          selected={item.key === selectedKey}
-          onSelect={onSelect}
-          onScale={onScale}
-          onSetScale={onSetScale}
-          onRemove={onRemove}
-          canvasRef={canvasRef}
-        />
-      ))}
     </div>
   )
 }

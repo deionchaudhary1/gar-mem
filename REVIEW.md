@@ -4,6 +4,12 @@ Senior-engineer-style review of `backend/app/` (auth, storage, migrations, all f
 models), July 2026. Ordered by severity. Security findings first — this is the project where
 interviewers will probe auth hardest.
 
+> **Note (August 2026, `simple` branch):** the social layer was removed — `routers/social.py`,
+> `serializers.py`, the `Follow`/`Like`/`Comment` models, and the `is_public` columns are gone
+> from the code. That makes **#9** (follow/like insert races) moot, resolves the dead
+> `Garment.is_public` column noted in **#8**, and drops the comment/bio length caps from
+> **#11**. Everything else below still applies, including all of #1–#7.
+
 ---
 
 ## Bugs

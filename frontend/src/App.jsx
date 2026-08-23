@@ -5,8 +5,6 @@ import HomePage from './pages/HomePage.jsx'
 import UploadPage from './pages/UploadPage.jsx'
 import OotdPage from './pages/OotdPage.jsx'
 import CalendarPage from './pages/CalendarPage.jsx'
-import FeedPage from './pages/FeedPage.jsx'
-import ProfilePage from './pages/ProfilePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
@@ -51,22 +49,6 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <CalendarPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/feed"
-                element={
-                  <RequireAuth>
-                    <FeedPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/u/:username"
-                element={
-                  <RequireAuth>
-                    <ProfilePage />
                   </RequireAuth>
                 }
               />

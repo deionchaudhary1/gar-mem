@@ -1,8 +1,4 @@
-import io
-import uuid
-
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
-from PIL import Image
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
@@ -14,11 +10,8 @@ from ..auth import (
     verify_password,
 )
 from ..database import get_db
-from ..storage import storage
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-AVATAR_SIZE = 256
 
 
 @router.post("/signup", response_model=schemas.User, status_code=201)
@@ -70,55 +63,4 @@ def logout(response: Response):
 
 @router.get("/me", response_model=schemas.User)
 def me(current_user: models.User = Depends(get_current_user)):
-    return current_user
-
-
-@router.patch("/me", response_model=schemas.User)
-def update_me(
-    payload: schemas.ProfileUpdate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    if "bio" in payload.model_fields_set:
-        current_user.bio = payload.bio
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-    return current_user
-
-
-@router.post("/me/avatar", response_model=schemas.User)
-async def upload_avatar(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    contents = await file.read()
-    try:
-        image = Image.open(io.BytesIO(contents))
-    except Exception:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail="invalid image")
-
-    if image.mode in ("RGBA", "P", "LA"):
-        image = image.convert("RGB")
-
-    # Center-crop to square, then downscale.
-    side = min(image.size)
-    left = (image.width - side) // 2
-    top = (image.height - side) // 2
-    image = image.crop((left, top, left + side, top + side))
-    image = image.resize((AVATAR_SIZE, AVATAR_SIZE))
-
-    buf = io.BytesIO()
-    image.save(buf, format="JPEG", quality=88)
-
-    old_avatar = current_user.avatar_path
-    current_user.avatar_path = storage.save(
-        "avatars", f"{uuid.uuid4()}.jpg", buf.getvalue()
-    )
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-
-    storage.delete(old_avatar)
     return current_user

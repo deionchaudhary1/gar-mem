@@ -1,26 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import client from '../api/client.js'
-import DraggableGarment from '../components/DraggableGarment.jsx'
+import CategoryRail from '../components/CategoryRail.jsx'
 import OutfitCanvas from '../components/OutfitCanvas.jsx'
-import { CATEGORIES, CATEGORY_LABELS } from '../constants.js'
+import { CATEGORIES, CATEGORY_ZONES } from '../constants.js'
 import { todayISO } from '../utils/date.js'
 import { useToast } from '../context/ToastContext.jsx'
 
-const clamp01 = (v) => Math.min(1, Math.max(0, v))
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 
-let keyCounter = 0
-const nextKey = () => `item-${++keyCounter}`
+// Keep a piece inside its own band, with a little breathing room at the edges.
+const clampToZone = (category, y) => {
+  const { top, bottom } = CATEGORY_ZONES[category]
+  const inset = (bottom - top) * 0.15
+  return clamp(y, top + inset, bottom - inset)
+}
+
+const emptySlots = () => ({ headwear: null, tops: null, pants: null, shoes: null })
+
+const slotFor = (garment) => {
+  const zone = CATEGORY_ZONES[garment.category]
+  return { garment, position_x: 0.5, position_y: zone.y, scale: zone.scale }
+}
 
 export default function OotdPage() {
   const [garments, setGarments] = useState([])
-  const [items, setItems] = useState([])
-  const [selectedKey, setSelectedKey] = useState(null)
+  const [slots, setSlots] = useState(emptySlots)
+  const [selected, setSelected] = useState(null)
   const [date, setDate] = useState(todayISO())
   const [note, setNote] = useState('')
   const [selfie, setSelfie] = useState(null)
   const [selfiePreview, setSelfiePreview] = useState(null)
-  const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
   const canvasRef = useRef(null)
   const showToast = useToast()
@@ -36,77 +46,95 @@ export default function OotdPage() {
       .catch(() => showToast('Could not load your closet'))
   }, [showToast])
 
-  const grouped = useMemo(
+  const byCategory = useMemo(
     () =>
-      CATEGORIES.map((cat) => ({
-        category: cat,
-        items: garments.filter((g) => g.category === cat),
-      })),
+      Object.fromEntries(
+        CATEGORIES.map((cat) => [cat, garments.filter((g) => g.category === cat)]),
+      ),
     [garments],
   )
 
-  const handleDragEnd = (event) => {
-    const { active, over, delta } = event
-    const rect = canvasRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const type = active.data.current?.type
-
-    if (type === 'sidebar') {
-      if (over?.id !== 'canvas') return
-      const translated = active.rect.current.translated
-      const cx = translated.left + translated.width / 2
-      const cy = translated.top + translated.height / 2
-      const x = clamp01((cx - rect.left) / rect.width)
-      const y = clamp01((cy - rect.top) / rect.height)
-      const key = nextKey()
-      setItems((prev) => [
-        ...prev,
-        {
-          key,
-          garment: active.data.current.garment,
-          position_x: x,
-          position_y: y,
-          scale: 1,
-        },
-      ])
-      setSelectedKey(key)
-    } else if (type === 'canvas-item') {
-      const key = active.data.current.key
-      setItems((prev) =>
-        prev.map((it) =>
-          it.key === key
-            ? {
-                ...it,
-                position_x: clamp01(it.position_x + delta.x / rect.width),
-                position_y: clamp01(it.position_y + delta.y / rect.height),
-              }
-            : it,
-        ),
-      )
-    }
+  // One piece per slot: clicking the piece already worn takes it off again.
+  const pickGarment = (garment) => {
+    const category = garment.category
+    const isWorn = slots[category]?.garment.id === garment.id
+    setSlots((prev) => ({ ...prev, [category]: isWorn ? null : slotFor(garment) }))
+    setSelected(isWorn ? null : category)
   }
 
-  const scaleItem = (key, d) =>
-    setItems((prev) =>
-      prev.map((it) =>
-        it.key === key
-          ? { ...it, scale: Math.min(2.5, Math.max(0.3, +(it.scale + d).toFixed(2))) }
-          : it,
-      ),
+  const rollCategory = (category) => {
+    const pool = byCategory[category] ?? []
+    if (pool.length === 0) return
+    // With more than one option, never roll the piece already in the slot.
+    const wornId = slots[category]?.garment.id
+    const choices = pool.length > 1 ? pool.filter((g) => g.id !== wornId) : pool
+    const pick = choices[Math.floor(Math.random() * choices.length)]
+    setSlots((prev) => ({ ...prev, [category]: slotFor(pick) }))
+    setSelected(category)
+  }
+
+  const rollAll = () => {
+    const next = emptySlots()
+    let any = false
+    for (const category of CATEGORIES) {
+      const pool = byCategory[category] ?? []
+      if (pool.length === 0) continue
+      next[category] = slotFor(pool[Math.floor(Math.random() * pool.length)])
+      any = true
+    }
+    if (!any) {
+      showToast('Add some pieces to your closet first')
+      return
+    }
+    setSlots(next)
+    setSelected(null)
+  }
+
+  const handleDragEnd = ({ active, delta }) => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const category = active.data.current?.category
+    if (!category) return
+    setSlots((prev) => {
+      const slot = prev[category]
+      if (!slot) return prev
+      return {
+        ...prev,
+        [category]: {
+          ...slot,
+          position_x: clamp(slot.position_x + delta.x / rect.width, 0, 1),
+          position_y: clampToZone(category, slot.position_y + delta.y / rect.height),
+        },
+      }
+    })
+  }
+
+  const scaleSlot = (category, d) =>
+    setSlots((prev) =>
+      prev[category]
+        ? {
+            ...prev,
+            [category]: {
+              ...prev[category],
+              scale: clamp(+(prev[category].scale + d).toFixed(2), 0.3, 2.5),
+            },
+          }
+        : prev,
     )
 
-  const setItemScale = (key, scale) =>
-    setItems((prev) =>
-      prev.map((it) =>
-        it.key === key
-          ? { ...it, scale: Math.min(2.5, Math.max(0.3, +scale.toFixed(2))) }
-          : it,
-      ),
+  const setSlotScale = (category, scale) =>
+    setSlots((prev) =>
+      prev[category]
+        ? {
+            ...prev,
+            [category]: { ...prev[category], scale: clamp(+scale.toFixed(2), 0.3, 2.5) },
+          }
+        : prev,
     )
 
-  const removeItem = (key) => {
-    setItems((prev) => prev.filter((it) => it.key !== key))
-    setSelectedKey((k) => (k === key ? null : k))
+  const removeSlot = (category) => {
+    setSlots((prev) => ({ ...prev, [category]: null }))
+    setSelected((s) => (s === category ? null : s))
   }
 
   const pickSelfie = (f) => {
@@ -119,31 +147,31 @@ export default function OotdPage() {
   }
 
   const clearAll = () => {
-    setItems([])
-    setSelectedKey(null)
+    setSlots(emptySlots())
+    setSelected(null)
     setNote('')
     setSelfie(null)
-    setIsPublic(false)
     setSelfiePreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
       return null
     })
   }
 
+  const worn = CATEGORIES.map((c) => slots[c]).filter(Boolean)
+
   const save = async () => {
-    if (items.length === 0 || saving) return
+    if (worn.length === 0 || saving) return
     setSaving(true)
     try {
       const body = {
         date,
         note: note.trim() ? note.trim() : null,
-        items: items.map((it) => ({
-          garment_id: it.garment.id,
-          position_x: it.position_x,
-          position_y: it.position_y,
-          scale: it.scale,
+        items: worn.map((slot) => ({
+          garment_id: slot.garment.id,
+          position_x: slot.position_x,
+          position_y: slot.position_y,
+          scale: slot.scale,
         })),
-        is_public: isPublic,
       }
       const res = await client.post('/outfits/', body)
       if (selfie) {
@@ -162,37 +190,41 @@ export default function OotdPage() {
 
   return (
     <div>
-      <header className="page-head">
+      <header className="page-head page-head--split">
         <h1 className="page-title">Build a Look</h1>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={rollAll}
+          disabled={garments.length === 0}
+        >
+          Shuffle everything
+        </button>
       </header>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="ootd">
-          <aside className="ootd__sidebar">
-            {grouped.map((group) => (
-              <div key={group.category} className="ootd__group">
-                <h2 className="section-label">{CATEGORY_LABELS[group.category]}</h2>
-                {group.items.length === 0 ? (
-                  <p className="ootd__group-empty">—</p>
-                ) : (
-                  <div className="ootd__group-grid">
-                    {group.items.map((g) => (
-                      <DraggableGarment key={g.id} garment={g} />
-                    ))}
-                  </div>
-                )}
-              </div>
+          <div className="ootd__rails">
+            {CATEGORIES.map((category) => (
+              <CategoryRail
+                key={category}
+                category={category}
+                garments={byCategory[category] ?? []}
+                activeId={slots[category]?.garment.id}
+                onPick={pickGarment}
+                onRoll={rollCategory}
+              />
             ))}
-          </aside>
+          </div>
 
           <div className="ootd__stage">
             <OutfitCanvas
-              items={items}
-              selectedKey={selectedKey}
-              onSelect={setSelectedKey}
-              onScale={scaleItem}
-              onSetScale={setItemScale}
-              onRemove={removeItem}
+              slots={slots}
+              selected={selected}
+              onSelect={setSelected}
+              onScale={scaleSlot}
+              onSetScale={setSlotScale}
+              onRemove={removeSlot}
               canvasRef={canvasRef}
             />
 
@@ -239,25 +271,11 @@ export default function OotdPage() {
                 </label>
               </div>
 
-              <label className="share-toggle">
-                <input
-                  type="checkbox"
-                  className="visually-hidden"
-                  checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
-                />
-                <span
-                  className={`share-toggle__pill${isPublic ? ' share-toggle__pill--active' : ''}`}
-                >
-                  {isPublic ? 'Shared to feed' : 'Share to feed'}
-                </span>
-              </label>
-
               <button
                 type="button"
                 className="btn btn--primary"
                 onClick={save}
-                disabled={items.length === 0 || saving}
+                disabled={worn.length === 0 || saving}
               >
                 {saving ? 'Saving…' : 'Save outfit'}
               </button>

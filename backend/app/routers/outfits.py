@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session, joinedload
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
-from ..serializers import feed_outfit
 from ..storage import storage
 
 router = APIRouter(prefix="/api/outfits", tags=["outfits"])
@@ -20,7 +19,7 @@ ITEMS_QUERY_OPTS = joinedload(models.Outfit.items).joinedload(models.OutfitItem.
 def _load_outfit(outfit_id: int, db: Session) -> models.Outfit | None:
     return (
         db.query(models.Outfit)
-        .options(ITEMS_QUERY_OPTS, joinedload(models.Outfit.user))
+        .options(ITEMS_QUERY_OPTS)
         .filter(models.Outfit.id == outfit_id)
         .first()
     )
@@ -68,7 +67,6 @@ def create_outfit(
         user_id=current_user.id,
         date=payload.date,
         note=payload.note,
-        is_public=payload.is_public,
     )
     for item in payload.items:
         outfit.items.append(
@@ -121,18 +119,17 @@ def list_outfits(
     return query.all()
 
 
-@router.get("/{outfit_id}", response_model=schemas.FeedOutfit)
+@router.get("/{outfit_id}", response_model=schemas.Outfit)
 def get_outfit(
     outfit_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     outfit = _load_outfit(outfit_id, db)
-    if outfit is None or (
-        outfit.user_id != current_user.id and not outfit.is_public
-    ):
+    # Another user's outfit 404s (not 403) so ids don't leak existence.
+    if outfit is None or outfit.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="outfit not found")
-    return feed_outfit(outfit, current_user.id, db)
+    return outfit
 
 
 @router.patch("/{outfit_id}", response_model=schemas.Outfit)
@@ -146,8 +143,6 @@ def update_outfit(
 
     if "note" in payload.model_fields_set:
         outfit.note = payload.note
-    if payload.is_public is not None:
-        outfit.is_public = payload.is_public
 
     db.add(outfit)
     db.commit()
