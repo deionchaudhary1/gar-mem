@@ -9,11 +9,28 @@ comments, public profiles) was removed on the `simple` branch.
 
 - **Backend** (`backend/app/`) — FastAPI + SQLAlchemy + Alembic. SQLite by default, Postgres via
   `DATABASE_URL`. JWT session cookies (PyJWT + bcrypt). `withoutbg` for background removal.
-- **Frontend** (`frontend/`) — React + Vite. The outfit canvas is **one slot per category**:
-  `CATEGORY_ZONES` in `constants.js` splits it into four stacked bands (headwear / tops /
-  pants / shoes) and owns each band's landing position and default scale. Clicking a rail
-  piece wears it; clicking the worn piece takes it off; the orange die shuffles that
-  category. `@dnd-kit/core` only repositions a worn piece, clamped inside its own band.
+- **Frontend** (`frontend/`) — React + Vite. `styles/index.css` is a single hand-written
+  stylesheet with a token block at the top; there is no CSS framework. Three rules govern it:
+
+  1. **The page never scrolls.** `body` is `overflow: hidden`, `#root` is a `100dvh` flex
+     column, `.page` fills it, and `.page > *` stretches each page's root element. A new page
+     must lay itself out with `flex: 1; min-height: 0`, never assume it can grow. Overflow goes
+     *sideways* inside a row (`.rail__track`, `.closet-row__track`), never down the document.
+  2. **Blue leads, orange accents.** Blue for primary actions, links, focus and active nav;
+     orange only for selection, the dice, and marks that must catch the eye.
+  3. **Four parts, one per category.** The outfit display is divided into four stacked parts
+     (headwear / shirts / pants / shoes) and a piece can never leave its own part — see below.
+
+- **One slot per category, and containment is enforced, not hoped for.** `CATEGORY_ZONES` in
+  `constants.js` gives each category a band (`top`/`bottom`), a landing position (`y`), and a
+  `base` height expressed as a fraction of display height. Pieces are sized by **height** off
+  `base`, not by width, and `base * MAX_SCALE` is under every band's height — so no scale can
+  outgrow a part. `zoneBounds()` then clamps a piece's *centre* using its actual half-height
+  plus the panel's drawn inset, so dragging and resizing both keep every edge inside the part.
+  Change `base`, `MAX_SCALE` or the `zone` inset together, or containment breaks.
+
+- Clicking a rail piece wears it; clicking the worn piece takes it off; the orange die shuffles
+  that category. `@dnd-kit/core` only repositions a worn piece within its own part.
 
 ```
 backend/app/
@@ -51,6 +68,9 @@ model (~1–2 min); later uploads are fast.
 - **All file I/O goes through `storage.py`** — never write to disk directly in a router. This is
   what makes the S3/R2 move a one-class change (see `plans/DEPLOY.md`).
 - **Pagination**: page+1 fetch for `has_more`, ordered with an id tiebreaker.
+
+- **Category keys vs. labels**: the DB and API use `tops`/`pants`; the UI labels them
+  "Shirts"/"Pants" (`CATEGORY_LABELS`). Don't rename the keys — existing rows depend on them.
 
 - **Dead schema is intentional**: the DB still has `follows`/`likes`/`comments` tables and
   `is_public` columns from migration `0002`. No model or router touches them, and no migration

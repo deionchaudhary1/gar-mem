@@ -46,6 +46,19 @@ class Garment(GarmentBase):
     created_at: datetime
 
 
+class GarmentPreview(Garment):
+    thumbnail_path: str
+
+
+class GarmentPage(BaseModel):
+    items: List[GarmentPreview]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+    counts: dict[str, int]
+
+
 # ---------- OutfitItem ----------
 
 

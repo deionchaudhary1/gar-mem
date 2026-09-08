@@ -11,8 +11,11 @@ Every account is private: there is no feed, no following, and no sharing.
 - **Backend** — FastAPI + SQLAlchemy + Alembic; SQLite by default, Postgres via
   `DATABASE_URL`; `withoutbg` for background removal; JWT session cookies
   (PyJWT + bcrypt)
-- **Frontend** — React + Vite; the outfit canvas holds one piece per category in
-  four stacked bands, and `@dnd-kit/core` nudges a worn piece within its band
+- **Frontend** — React + Vite, one hand-written stylesheet, no CSS framework.
+  The outfit display is divided into four parts — headwear, shirts, pants,
+  shoes — and holds one piece per part; `@dnd-kit/core` nudges a worn piece
+  within its own part. Every screen is sized to the viewport, so the page
+  itself never scrolls; a crowded category scrolls sideways instead
 
 ## Running
 

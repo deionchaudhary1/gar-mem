@@ -2,9 +2,9 @@ import io
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import JSONResponse, Response
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
@@ -89,6 +89,60 @@ def list_garments(
         query = query.filter(models.Garment.category == category)
     query = query.order_by(models.Garment.created_at.desc(), models.Garment.id.desc())
     return query.all()
+
+
+@router.get("/browse", response_model=schemas.GarmentPage)
+def browse_garments(
+    category: str | None = None,
+    q: str = Query(default="", max_length=120),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=24),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if category is not None and category not in VALID_CATEGORIES:
+        raise HTTPException(status_code=400, detail="invalid category")
+    query = db.query(models.Garment).filter(models.Garment.user_id == current_user.id)
+    aliases = {"shirt": "tops", "shirts": "tops", "top": "tops", "hat": "headwear",
+               "hats": "headwear", "cap": "headwear", "shoe": "shoes", "trousers": "pants"}
+    for token in q.lower().split():
+        category_token = aliases.get(token, token)
+        query = query.filter(or_(
+            func.lower(models.Garment.name).contains(token, autoescape=True),
+            models.Garment.category == category_token,
+        ))
+    counts = dict(query.with_entities(models.Garment.category, func.count(models.Garment.id))
+                  .group_by(models.Garment.category).all())
+    if category is not None:
+        query = query.filter(models.Garment.category == category)
+    total = query.count()
+    pages = max(1, (total + page_size - 1) // page_size)
+    page = min(page, pages)
+    rows = (query.order_by(models.Garment.created_at.desc(), models.Garment.id.desc())
+            .offset((page - 1) * page_size).limit(page_size).all())
+    return {
+        "items": [schemas.GarmentPreview(
+            **schemas.Garment.model_validate(row).model_dump(),
+            thumbnail_path=f"/api/garments/{row.id}/thumbnail",
+        ) for row in rows],
+        "total": total, "pages": pages, "page": page, "page_size": page_size,
+        "counts": {cat: counts.get(cat, 0) for cat in sorted(VALID_CATEGORIES)},
+    }
+
+
+@router.get("/{garment_id}/thumbnail")
+def garment_thumbnail(
+    garment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    garment = _get_owned_garment(garment_id, db, current_user)
+    try:
+        data = storage.thumbnail(garment.image_path)
+    except (OSError, ValueError):
+        raise HTTPException(status_code=404, detail="image not found")
+    # Revalidate ownership on every request; no shared/proxy caching of private media.
+    return Response(data, media_type="image/webp", headers={"Cache-Control": "private, no-cache"})
 
 
 @router.get("/{garment_id}", response_model=schemas.Garment)

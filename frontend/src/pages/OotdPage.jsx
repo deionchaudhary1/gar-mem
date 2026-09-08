@@ -1,29 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import client from '../api/client.js'
+import { useSearchParams } from 'react-router-dom'
 import CategoryRail from '../components/CategoryRail.jsx'
 import OutfitCanvas from '../components/OutfitCanvas.jsx'
-import { CATEGORIES, CATEGORY_ZONES } from '../constants.js'
+import {
+  CATEGORIES,
+  CATEGORY_ZONES,
+  MAX_SCALE,
+  MIN_SCALE,
+  zoneBounds,
+} from '../constants.js'
 import { todayISO } from '../utils/date.js'
 import { useToast } from '../context/ToastContext.jsx'
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 
-// Keep a piece inside its own band, with a little breathing room at the edges.
-const clampToZone = (category, y) => {
-  const { top, bottom } = CATEGORY_ZONES[category]
-  const inset = (bottom - top) * 0.15
-  return clamp(y, top + inset, bottom - inset)
-}
+// Clamp a piece's centre so its top and bottom edges stay inside its part.
+const clampToZone = (category, y, scale) => clamp(y, ...zoneBounds(category, scale))
 
 const emptySlots = () => ({ headwear: null, tops: null, pants: null, shoes: null })
 
-const slotFor = (garment) => {
-  const zone = CATEGORY_ZONES[garment.category]
-  return { garment, position_x: 0.5, position_y: zone.y, scale: zone.scale }
-}
+const slotFor = (garment) => ({
+  garment,
+  position_x: 0.5,
+  position_y: CATEGORY_ZONES[garment.category].y,
+  scale: 1,
+})
 
 export default function OotdPage() {
+  const [searchParams] = useSearchParams()
+  const initialGarment = searchParams.get('garment')
   const [garments, setGarments] = useState([])
   const [slots, setSlots] = useState(emptySlots)
   const [selected, setSelected] = useState(null)
@@ -34,6 +41,17 @@ export default function OotdPage() {
   const [saving, setSaving] = useState(false)
   const canvasRef = useRef(null)
   const showToast = useToast()
+
+  useEffect(() => {
+    if (!initialGarment) return
+    const controller = new AbortController()
+    client.get(`/garments/${initialGarment}`, { signal: controller.signal }).then(({ data }) => {
+      if (!CATEGORIES.includes(data.category)) return
+      setSlots(prev => ({ ...prev, [data.category]: slotFor(data) }))
+      setSelected(data.category)
+    }).catch(() => { if (!controller.signal.aborted) showToast('That piece is no longer available') })
+    return () => controller.abort()
+  }, [initialGarment, showToast])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -103,34 +121,40 @@ export default function OotdPage() {
         [category]: {
           ...slot,
           position_x: clamp(slot.position_x + delta.x / rect.width, 0, 1),
-          position_y: clampToZone(category, slot.position_y + delta.y / rect.height),
+          position_y: clampToZone(
+            category,
+            slot.position_y + delta.y / rect.height,
+            slot.scale,
+          ),
         },
       }
     })
   }
 
-  const scaleSlot = (category, d) =>
-    setSlots((prev) =>
-      prev[category]
-        ? {
-            ...prev,
-            [category]: {
-              ...prev[category],
-              scale: clamp(+(prev[category].scale + d).toFixed(2), 0.3, 2.5),
-            },
-          }
-        : prev,
-    )
+  const resize = (category, nextScale) =>
+    setSlots((prev) => {
+      const slot = prev[category]
+      if (!slot) return prev
+      const scale = clamp(+nextScale.toFixed(2), MIN_SCALE, MAX_SCALE)
+      return {
+        ...prev,
+        // Growing a piece can push it past its part's edge, so re-clamp.
+        [category]: { ...slot, scale, position_y: clampToZone(category, slot.position_y, scale) },
+      }
+    })
 
-  const setSlotScale = (category, scale) =>
-    setSlots((prev) =>
-      prev[category]
-        ? {
-            ...prev,
-            [category]: { ...prev[category], scale: clamp(+scale.toFixed(2), 0.3, 2.5) },
-          }
-        : prev,
-    )
+  const scaleSlot = (category, d) =>
+    setSlots((prev) => {
+      const slot = prev[category]
+      if (!slot) return prev
+      const scale = clamp(+(slot.scale + d).toFixed(2), MIN_SCALE, MAX_SCALE)
+      return {
+        ...prev,
+        [category]: { ...slot, scale, position_y: clampToZone(category, slot.position_y, scale) },
+      }
+    })
+
+  const setSlotScale = (category, scale) => resize(category, scale)
 
   const removeSlot = (category) => {
     setSlots((prev) => ({ ...prev, [category]: null }))
@@ -191,7 +215,7 @@ export default function OotdPage() {
   return (
     <div>
       <header className="page-head page-head--split">
-        <h1 className="page-title">Build a Look</h1>
+        <div><h1 className="page-title">Put a look together</h1><p className="page-description">Pick from your closet. One piece, one place.</p></div>
         <button
           type="button"
           className="btn btn--secondary"
@@ -229,6 +253,19 @@ export default function OotdPage() {
             />
 
             <div className="ootd__meta">
+              <div className="field field--grow">
+                <label className="section-label" htmlFor="note">
+                  Note
+                </label>
+                <input
+                  id="note"
+                  type="text"
+                  className="text-input"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </div>
+
               <div className="field">
                 <label className="section-label" htmlFor="date">
                   Date
@@ -242,34 +279,20 @@ export default function OotdPage() {
                 />
               </div>
 
-              <div className="field">
-                <label className="section-label" htmlFor="note">
-                  What&apos;s the story?
-                </label>
-                <textarea
-                  id="note"
-                  className="text-input textarea"
-                  rows={3}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
+              <label className="file-line">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="visually-hidden"
+                  onChange={(e) => pickSelfie(e.target.files?.[0])}
                 />
-              </div>
-
-              <div className="field">
-                <span className="section-label">Selfie (optional)</span>
-                <label className="file-line">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="visually-hidden"
-                    onChange={(e) => pickSelfie(e.target.files?.[0])}
-                  />
-                  <span className="btn btn--secondary">Choose photo</span>
-                  {selfiePreview && (
-                    <img className="selfie-thumb" src={selfiePreview} alt="Selfie preview" />
-                  )}
-                </label>
-              </div>
+                <span className="btn btn--secondary">
+                  {selfie ? 'Photo added' : 'Photo'}
+                </span>
+                {selfiePreview && (
+                  <img className="selfie-thumb" src={selfiePreview} alt="Selfie preview" />
+                )}
+              </label>
 
               <button
                 type="button"

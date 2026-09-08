@@ -86,7 +86,8 @@ export default function CalendarPage() {
   }
 
   return (
-    <div>
+    <div className="calendar-page">
+      <header className="page-head page-head--split"><div><h1 className="page-title">Your outfit journal</h1><p className="page-description">A look back at what you wore.</p></div><button className="btn btn--secondary" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1) }}>This month</button></header>
       <header className="calendar-head">
         <button
           type="button"

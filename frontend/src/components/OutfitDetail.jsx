@@ -1,3 +1,6 @@
+import OutfitZones from './OutfitZones.jsx'
+import { CATEGORY_ZONES } from '../constants.js'
+
 function formatDate(iso) {
   if (!iso) return ''
   const [y, m, d] = iso.split('-').map(Number)
@@ -11,6 +14,11 @@ function formatDate(iso) {
 }
 
 export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
+  // Every part that carries a piece, so the empty ones keep their label.
+  const filledZones = Object.fromEntries(
+    (outfit?.items ?? []).map((item) => [item.garment.category, true]),
+  )
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
@@ -36,6 +44,7 @@ export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
 
             <div className="modal__body">
               <div className="outfit-render">
+                <OutfitZones filled={filledZones} />
                 {outfit.items.map((item) => (
                   <div
                     key={item.id}
@@ -43,6 +52,9 @@ export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
                     style={{
                       left: `${item.position_x * 100}%`,
                       top: `${item.position_y * 100}%`,
+                      height: `${
+                        (CATEGORY_ZONES[item.garment.category]?.base ?? 0.2) * 100
+                      }%`,
                       transform: `translate(-50%, -50%) scale(${item.scale})`,
                     }}
                   >

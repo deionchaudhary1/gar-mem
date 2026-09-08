@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8010',
-      '/uploads': 'http://localhost:8010',
+      '/api': process.env.API_PROXY_TARGET || 'http://localhost:8010',
+      '/uploads': process.env.API_PROXY_TARGET || 'http://localhost:8010',
     },
   },
 })

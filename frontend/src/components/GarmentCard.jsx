@@ -1,6 +1,6 @@
-export default function GarmentCard({ garment, onDelete, index = 0 }) {
+export default function GarmentCard({ garment, onDelete }) {
   return (
-    <div className="garment-card" style={{ '--i': index }}>
+    <div className="garment-card">
       <div className="garment-card__tile">
         <img
           src={garment.image_path}

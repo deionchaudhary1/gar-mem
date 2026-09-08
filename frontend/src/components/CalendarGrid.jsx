@@ -40,6 +40,7 @@ export default function CalendarGrid({ year, month, days, onSelectDay }) {
               type="button"
               className={`calendar__cell${c.entry ? ' calendar__cell--has' : ''}`}
               disabled={!c.entry}
+              aria-label={`${c.key}${c.entry ? ', view saved outfit' : ', no outfit'}`}
               onClick={() => c.entry && onSelectDay(c.entry)}
             >
               <span className="calendar__daynum">{c.day}</span>

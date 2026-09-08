@@ -3,10 +3,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const links = [
-  { to: '/', label: 'closet', end: true },
-  { to: '/upload', label: 'upload' },
-  { to: '/ootd', label: 'OOTD' },
-  { to: '/calendar', label: 'calendar' },
+  { to: '/', label: 'Closet', end: true },
+  { to: '/upload', label: 'Upload' },
+  { to: '/ootd', label: 'Outfits' },
+  { to: '/calendar', label: 'Calendar' },
 ]
 
 export default function Navbar() {
@@ -31,7 +31,7 @@ export default function Navbar() {
         <NavLink to="/" className="wordmark">
           garment memory
         </NavLink>
-        <nav className="navlinks">
+        <nav className="navlinks" aria-label="Main navigation">
           {links.map((l) => (
             <NavLink
               key={l.to}
@@ -51,6 +51,9 @@ export default function Navbar() {
             <button
               type="button"
               className="navbar__user-trigger"
+              aria-expanded={open}
+              aria-label="Account menu"
+              onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
               onClick={() => setOpen((o) => !o)}
             >
               {user.avatar_path ? (
@@ -60,13 +63,14 @@ export default function Navbar() {
                   {user.username[0]?.toUpperCase()}
                 </span>
               )}
-              <span className="navbar__username">{user.username}</span>
+              <span className="navbar__username">Account</span><span aria-hidden="true">⌄</span>
             </button>
 
             {open && (
               <>
                 <div className="navbar__dropdown-scrim" onClick={() => setOpen(false)} />
                 <div className="navbar__dropdown">
+                  <span className="account-name">{user.username}</span>
                   <button
                     type="button"
                     className="navbar__dropdown-item"

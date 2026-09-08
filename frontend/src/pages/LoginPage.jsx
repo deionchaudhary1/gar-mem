@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import FloatingWardrobe from '../components/FloatingWardrobe.jsx'
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth()
@@ -34,9 +33,10 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <FloatingWardrobe />
       <div className="auth-card">
+        <p className="auth-wordmark">garment memory</p>
         <h1 className="auth-title">Welcome back.</h1>
+        <p className="auth-description">Your wardrobe, right where you left it.</p>
         <form className="auth-form" onSubmit={submit}>
           <div className="field">
             <label className="section-label" htmlFor="identifier">
@@ -65,7 +65,7 @@ export default function LoginPage() {
               required
             />
           </div>
-          {error && <p className="auth-error">{error}</p>}
+          {error && <p className="auth-error" role="alert">{typeof error === 'string' ? error : 'Check your details and try again.'}</p>}
           <button type="submit" className="btn btn--primary auth-submit" disabled={submitting}>
             {submitting ? 'Logging in…' : 'Log in'}
           </button>

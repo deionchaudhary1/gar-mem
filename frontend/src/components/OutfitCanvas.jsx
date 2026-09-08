@@ -1,9 +1,7 @@
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { CATEGORIES, CATEGORY_LABELS, CATEGORY_ZONES } from '../constants.js'
-
-const MIN_SCALE = 0.3
-const MAX_SCALE = 2.5
+import { CATEGORIES, CATEGORY_ZONES, MAX_SCALE, MIN_SCALE } from '../constants.js'
+import OutfitZones from './OutfitZones.jsx'
 
 function CanvasItem({ slot, category, selected, onSelect, onScale, onSetScale, onRemove, canvasRef }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -38,6 +36,7 @@ function CanvasItem({ slot, category, selected, onSelect, onScale, onSetScale, o
   const style = {
     left: `${slot.position_x * 100}%`,
     top: `${slot.position_y * 100}%`,
+    height: `${CATEGORY_ZONES[category].base * 100}%`,
     transform: `translate(-50%, -50%) ${
       transform ? CSS.Translate.toString(transform) : ''
     } scale(${slot.scale})`,
@@ -100,24 +99,8 @@ export default function OutfitCanvas({
 
   return (
     <div className="outfit-stage">
-      <div ref={canvasRef} className="outfit-canvas" onClick={() => onSelect(null)}>
-        {CATEGORIES.map((category) => {
-          const zone = CATEGORY_ZONES[category]
-          return (
-            <div
-              key={category}
-              className="zone"
-              style={{
-                top: `${zone.top * 100}%`,
-                height: `${(zone.bottom - zone.top) * 100}%`,
-              }}
-            >
-              {!slots[category] && (
-                <span className="zone__label">{CATEGORY_LABELS[category]}</span>
-              )}
-            </div>
-          )
-        })}
+      <div ref={canvasRef} className="outfit-display" onClick={() => onSelect(null)}>
+        <OutfitZones filled={slots} />
 
         {CATEGORIES.map((category) =>
           slots[category] ? (

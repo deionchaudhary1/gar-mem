@@ -1,13 +1,14 @@
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import client from '../api/client.js'
 import { CATEGORIES, CATEGORY_LABELS } from '../constants.js'
 import { useToast } from '../context/ToastContext.jsx'
 
 export default function UploadPage() {
+  const [params] = useSearchParams()
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
-  const [category, setCategory] = useState('tops')
+  const [category, setCategory] = useState(() => CATEGORIES.includes(params.get('category')) ? params.get('category') : 'tops')
   const [name, setName] = useState('')
   const [pending, setPending] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -15,8 +16,11 @@ export default function UploadPage() {
   const navigate = useNavigate()
   const showToast = useToast()
 
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+
   const pickFile = (f) => {
-    if (!f) return
+    if (!f || pending) return
+    if (!f.type.startsWith('image/')) { showToast('Choose an image file'); return }
     setFile(f)
     setPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -52,7 +56,8 @@ export default function UploadPage() {
   return (
     <div className="upload">
       <header className="page-head">
-        <h1 className="page-title">Add a Piece</h1>
+        <h1 className="page-title">Make room for a new piece</h1>
+        <p className="page-description">One photo is all you need. We’ll take care of the background.</p>
       </header>
 
       <form className="upload__form" onSubmit={onSubmit}>
@@ -68,43 +73,34 @@ export default function UploadPage() {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           role="button"
+          aria-label="Choose a clothing photo"
+          aria-disabled={pending}
           tabIndex={0}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!pending) inputRef.current?.click() }
           }}
         >
           {preview ? (
             <img src={preview} alt="Preview" className="dropzone__preview" />
           ) : (
             <div className="dropzone__hint">
-              <svg
-                className="dropzone__hanger"
-                width="56"
-                height="36"
-                viewBox="0 0 64 40"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M32 4a5 5 0 1 1 5 5c-3 0-5 2-5 5" />
-                <path d="M32 14 6 32h52L32 14Z" />
-              </svg>
               <span className="dropzone__title">Drop an image here</span>
               <span className="dropzone__sub">or click to browse</span>
+              <span className="upload-tip">A clear photo of one piece works best.</span>
             </div>
           )}
           <input
             ref={inputRef}
             type="file"
             accept="image/*"
+            disabled={pending}
             className="visually-hidden"
             onChange={(e) => pickFile(e.target.files?.[0])}
           />
         </div>
 
+        <div className="upload-details">
+        <span className="eyebrow">The details</span>
         <div className="field">
           <span className="section-label">Category</span>
           <div className="radio-pills">
@@ -118,6 +114,7 @@ export default function UploadPage() {
                   name="category"
                   value={cat}
                   checked={category === cat}
+                  disabled={pending}
                   onChange={() => setCategory(cat)}
                   className="visually-hidden"
                 />
@@ -135,7 +132,7 @@ export default function UploadPage() {
             id="name"
             type="text"
             className="text-input"
-            placeholder="White tee"
+            disabled={pending}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -154,6 +151,8 @@ export default function UploadPage() {
         >
           {pending ? 'Processing…' : 'Add to closet'}
         </button>
+        <Link className="text-button" to="/">Back to closet</Link>
+        </div>
       </form>
     </div>
   )
