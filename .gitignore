@@ -27,3 +27,5 @@ photo.avif
 # Planning docs / execution summaries (not part of the shipped project)
 plans/
 changes/
+# Persistent, unauthenticated local testing data (never commit).
+backend/.local-testing/

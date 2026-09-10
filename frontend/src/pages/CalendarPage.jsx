@@ -87,7 +87,7 @@ export default function CalendarPage() {
 
   return (
     <div className="calendar-page">
-      <header className="page-head page-head--split"><div><h1 className="page-title">Your outfit journal</h1><p className="page-description">A look back at what you wore.</p></div><button className="btn btn--secondary" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1) }}>This month</button></header>
+      <header className="page-head page-head--split"><div><span className="eyebrow">04 / THE DAILY ARCHIVE</span><h1 className="page-title">Days worth remembering.</h1><p className="page-description">Your outfits, one day at a time.</p></div><button className="btn btn--secondary" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1) }}>This month</button></header>
       <header className="calendar-head">
         <button
           type="button"
@@ -97,9 +97,9 @@ export default function CalendarPage() {
         >
           ‹
         </button>
-        <h1 className="page-title calendar-title">
+        <h2 className="page-title calendar-title">
           {MONTH_NAMES[month - 1]} {year}
-        </h1>
+        </h2>
         <button
           type="button"
           className="calendar-nav"

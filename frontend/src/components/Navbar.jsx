@@ -29,10 +29,10 @@ export default function Navbar() {
     <header className="navbar">
       <div className="navbar__inner">
         <NavLink to="/" className="wordmark">
-          garment memory
+          <span className="brand-mark" aria-hidden="true">gm.</span><span>garment<br />memory<span className="brand-caption">YOUR PERSONAL WARDROBE</span></span>
         </NavLink>
         <nav className="navlinks" aria-label="Main navigation">
-          {links.map((l) => (
+          {links.map((l, index) => (
             <NavLink
               key={l.to}
               to={l.to}
@@ -41,12 +41,14 @@ export default function Navbar() {
                 `navlink${isActive ? ' navlink--active' : ''}`
               }
             >
-              {l.label}
+              <span className="nav-index" aria-hidden="true">0{index + 1}</span><span>{l.label}</span><span className="nav-chevron" aria-hidden="true">↗</span>
             </NavLink>
           ))}
         </nav>
 
-        {user && (
+        <div className="sidebar-note"><span className="sidebar-note__mark" aria-hidden="true">✳</span><p>Wear what<br /><em>feels like you.</em></p><span>A little less searching.<br />A little more getting dressed.</span></div>
+        {user?.local_testing && <span className="navbar__user testing-badge" title="No authentication. Local use only."><span aria-hidden="true">●</span> Local testing</span>}
+        {user && !user.local_testing && (
           <div className="navbar__user">
             <button
               type="button"

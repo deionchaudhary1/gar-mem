@@ -56,7 +56,8 @@ export default function UploadPage() {
   return (
     <div className="upload">
       <header className="page-head">
-        <h1 className="page-title">Make room for a new piece</h1>
+        <span className="eyebrow">02 / SOMETHING NEW</span>
+        <h1 className="page-title">Meet your next staple.</h1>
         <p className="page-description">One photo is all you need. We’ll take care of the background.</p>
       </header>
 
@@ -84,6 +85,7 @@ export default function UploadPage() {
             <img src={preview} alt="Preview" className="dropzone__preview" />
           ) : (
             <div className="dropzone__hint">
+              <span className="upload-symbol" aria-hidden="true">↥</span>
               <span className="dropzone__title">Drop an image here</span>
               <span className="dropzone__sub">or click to browse</span>
               <span className="upload-tip">A clear photo of one piece works best.</span>
@@ -100,7 +102,7 @@ export default function UploadPage() {
         </div>
 
         <div className="upload-details">
-        <span className="eyebrow">The details</span>
+        <div><span className="eyebrow">MAKE IT AT HOME</span><h2 className="form-heading">A place in your closet.</h2></div>
         <div className="field">
           <span className="section-label">Category</span>
           <div className="radio-pills">

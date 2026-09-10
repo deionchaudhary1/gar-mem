@@ -4,13 +4,14 @@ Run from backend: python3 -m uvicorn tests.preview_app:app --port 8011
 Synthetic database and uploads exist only for the lifetime of this process.
 """
 import tempfile
+import os
+import shutil
 from pathlib import Path
 from PIL import Image, ImageDraw
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from app import models, storage as storage_module
 from app.auth import hash_password
 from app.database import Base, get_db
@@ -23,7 +24,7 @@ uploads = root / 'uploads'
 (uploads / 'outfits').mkdir()
 storage_module.BACKEND_DIR = str(root)
 storage_module.UPLOADS_DIR = str(uploads)
-engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+engine = create_engine(f'sqlite:///{root / "preview.db"}', connect_args={'check_same_thread': False})
 Base.metadata.create_all(engine)
 factory = sessionmaker(bind=engine)
 
@@ -44,11 +45,23 @@ for category in ['headwear', 'tops', 'pants', 'shoes']:
         draw.rectangle((55,280,345,305), fill='#f2eee7')
     image.save(uploads / 'garments' / f'{category}.png')
 
+fixture_files = {
+    'headwear': 'shopping.webp',
+    'tops': 'goods_481004_sub14_3x4.avif',
+    'pants': 'goods_487742_sub14_3x4.avif',
+    'shoes': 's-l1200.jpg',
+}
+real_photos = os.environ.get('WARDROBE_REAL_PHOTOS') == '1'
+if real_photos:
+    for filename in fixture_files.values():
+        shutil.copyfile(Path(__file__).parent / 'fixtures' / 'garments' / filename, uploads / 'garments' / filename)
+
 with factory() as db:
     db.add(models.User(id=1, username='preview', email='preview@example.com', password_hash=hash_password('preview-pass')))
     for category in ['headwear', 'tops', 'pants', 'shoes']:
         for i in range(101):
-            db.add(models.Garment(user_id=1, name=f'Blue {category} {i + 1:03}', category=category, image_path=f'/uploads/garments/{category}.png'))
+            filename = fixture_files[category] if real_photos else f'{category}.png'
+            db.add(models.Garment(user_id=1, name=f'Blue {category} {i + 1:03}', category=category, image_path=f'/uploads/garments/{filename}'))
     db.commit()
 
 def test_db():

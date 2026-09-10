@@ -58,19 +58,26 @@
 .range-count { font-size: 10px; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wardrobe-section__rack { display: flex; flex: 1; min-height: 0; gap: 8px; position: relative; }
 .rack-arrow { align-self: center; flex: none; font-size: 24px; padding: 0; min-width: 24px; }
-.rack-pieces { display: grid; grid-template-columns: repeat(var(--pieces), minmax(0, 1fr)); flex: 1; min-width: 0; min-height: 0; gap: 12px; position: relative; }
+.rack-pieces { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 36px) / 4); grid-template-rows: minmax(0, 1fr); flex: 1; min-width: 0; min-height: 0; gap: 12px; position: relative; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: #b9c8da transparent; }
+.rack-pieces:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.wardrobe-section--pants .rack-pieces { grid-auto-columns: calc((100% - 12px) / 2); }
+.wardrobe-section--headwear .rack-pieces, .wardrobe-section--shoes .rack-pieces { grid-auto-columns: calc((100% - 84px) / 8); }
 .wardrobe-section__rack::after { content: ''; position: absolute; bottom: 0; left: 32px; right: 32px; height: 5px; background: #d8e3f0; border-top: 1px solid #c7d6e7; pointer-events: none; }
-.wardrobe-section__rack--hanging::after { top: 12px; bottom: auto; height: 4px; border-radius: 4px; background: #b9c8da; }
 .wardrobe-piece { min-width: 0; min-height: 0; position: relative; display: flex; align-items: center; flex-direction: column; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; background: none; color: var(--ink-soft); text-align: center; }
 .wardrobe-piece:hover { background: #e9f0f9; border-color: #c4d7ee; }
 .wardrobe-piece:active { border-color: var(--orange); }
 .wardrobe-piece__image { display: flex; flex: 1; min-height: 0; width: 100%; align-items: center; justify-content: center; }
 .wardrobe-piece__image img { display: block; object-fit: contain; width: 100%; height: 100%; }
-.wardrobe-piece__name { display: block; flex: none; font-size: 11px; padding-top: 4px; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hanger { color: #b69a77; height: 36px; flex: none; width: min(100%, 120px); margin-top: 8px; z-index: 1; }
-.wardrobe-piece--hanging .wardrobe-piece__image { margin-top: -8px; }
-.wardrobe-section--headwear .rack-pieces, .wardrobe-section--shoes .rack-pieces { max-width: 520px; margin: 0 auto; padding-bottom: 8px; }
-.rack-message { grid-column: 1 / -1; place-self: center; color: var(--ink-soft); font-size: 12px; text-align: center; z-index: 1; background: #f2f6fb; }
+.wardrobe-piece__name { position: absolute; bottom: 4px; left: 4px; right: 4px; z-index: 1; padding: 4px 8px; border-radius: 4px; background: var(--ink); color: var(--panel); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; opacity: 0; pointer-events: none; transition: opacity 120ms ease-out; }
+.wardrobe-piece:hover .wardrobe-piece__name, .wardrobe-piece:focus-visible .wardrobe-piece__name { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .wardrobe-piece__name { transition: none; } }
+.open-wardrobe .rack-pieces { padding: 8px 0 12px; }
+.open-wardrobe .wardrobe-piece { background: var(--panel); border-color: var(--line-soft); padding: 8px; gap: 8px; }
+.open-wardrobe .wardrobe-piece:hover { border-color: var(--blue); background: var(--blue-wash); }
+.open-wardrobe .wardrobe-piece:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.open-wardrobe .wardrobe-piece:active { border-color: var(--orange); }
+.open-wardrobe .wardrobe-piece__image { overflow: hidden; }
+.rack-message { position: absolute; inset: 8px; display: grid; place-content: center; color: var(--ink-soft); font-size: 12px; text-align: center; z-index: 1; background: #f2f6fb; }
 .wardrobe-caption { flex: none; text-align: center; font-size: 12px; color: var(--ink-soft); padding-top: 16px; }
 .category-browser { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 20px; }
 .category-tabs { display: flex; flex: none; gap: 8px; flex-wrap: wrap; }
@@ -81,7 +88,6 @@
 .browse-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
 .browse-grid .wardrobe-piece { padding: 12px; background: var(--panel); border-bottom-color: var(--line); }
 .browse-grid .wardrobe-piece:hover { border-color: var(--blue); }
-.browse-grid .wardrobe-piece__name { font-size: 12px; padding-top: 12px; }
 .browse-message { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; color: var(--ink-soft); }
 .browse-footer { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: var(--ink-soft); }
 .pagination { display: flex; align-items: center; gap: 4px; }
@@ -138,7 +144,6 @@
   .page { padding-top: 16px; padding-bottom: 16px; }
   .page-head { margin-bottom: 16px; }
   .wardrobe-section { padding: 8px 12px; }
-  .hanger { height: 24px; }
   .wardrobe-piece__name { font-size: 10px; }
   .wardrobe-caption { padding-top: 8px; }
 }
@@ -156,9 +161,10 @@
   .browse-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .section-open__hint, .range-count { display: none; }
   .wardrobe-section { padding: 8px; }
-  .rack-pieces { gap: 4px; }
+  .rack-pieces { gap: 4px; grid-auto-columns: calc((100% - 12px) / 4); }
+  .wardrobe-section--pants .rack-pieces { grid-auto-columns: calc((100% - 4px) / 2); }
+  .wardrobe-section--headwear .rack-pieces, .wardrobe-section--shoes .rack-pieces { grid-auto-columns: calc((100% - 20px) / 6); }
   .wardrobe-piece { padding: 4px; }
-  .hanger { height: 24px; }
   .ootd { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; overflow-y: auto; }
   .ootd__rails, .ootd__stage { min-height: 400px; }
   .outfit-display { width: auto; height: 100%; }
@@ -177,11 +183,11 @@
   .open-wardrobe { grid-template-columns: 1.5fr 1fr; grid-template-rows: 22% 56% 22%; }
   .wardrobe-section__rack { gap: 0; }
   .rack-arrow { min-width: 20px; }
-  .wardrobe-section--tops .rack-pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
-  .wardrobe-section--pants .rack-pieces { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .wardrobe-section--tops .rack-pieces, .wardrobe-section--pants .rack-pieces { grid-auto-columns: 100%; }
+  .wardrobe-section--headwear .rack-pieces, .wardrobe-section--shoes .rack-pieces { grid-auto-columns: calc((100% - 8px) / 3); }
   .wardrobe-piece__name { font-size: 9px; }
-  .hanger { height: 16px; margin-top: 0; }
-  .wardrobe-section__rack--hanging::after { display: none; }
+  .open-wardrobe .wardrobe-piece { padding: 4px; gap: 4px; }
+  .open-wardrobe .wardrobe-piece__name { padding-top: 4px; }
   .wardrobe-caption { font-size: 10px; padding-top: 8px; }
   .category-browser { gap: 12px; }
   .category-tab { padding: 4px 8px; font-size: 11px; }

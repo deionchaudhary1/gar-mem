@@ -58,8 +58,10 @@ export default function HomePage() {
   return <div className="closet-page">
     <header className="page-head closet-toolbar">
       <div className="closet-heading">
+        <span className="eyebrow">01 / THE COLLECTION</span>
         {expanded && <button className="text-button" onClick={() => update({ category: '', q: '', page: '', view: '' })}>← Back to closet</button>}
-        <h1 className="page-title">{expanded ? (q ? 'Find your pieces' : CATEGORY_LABELS[category] || 'All pieces') : 'Open wardrobe'}</h1>
+        <h1 className="page-title">{expanded ? (q ? 'Find your pieces' : CATEGORY_LABELS[category] || 'All pieces') : 'Your wardrobe.'}</h1>
+        {!expanded && <p className="page-description">Everything you love wearing, in one place.</p>}
       </div>
       <div className="closet-actions">
         <label className="closet-search"><span className="visually-hidden">Find a piece by name or category</span><span aria-hidden="true">⌕</span>
@@ -74,7 +76,7 @@ export default function HomePage() {
       : <><div className="open-wardrobe">{CATEGORIES.map(c => <WardrobeSection key={c} category={c}
         page={pageNumber(params.get(`${c}Page`))} onPage={p => update({ [`${c}Page`]: p }, true)}
         onExpand={() => update({ category: c, page: '' })} onSelect={setSelected} revision={revision} />)}</div>
-        <p className="wardrobe-caption">Click a piece to view details. Open a category to explore everything.</p></>}
+        <p className="wardrobe-caption">Scroll a shelf to browse. Hover for names; click for details.</p></>}
     {selected && <GarmentDetail garment={selected} onClose={() => setSelected(null)} onDelete={handleDelete} />}
   </div>
 }

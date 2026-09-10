@@ -213,9 +213,9 @@ export default function OotdPage() {
   }
 
   return (
-    <div>
+    <div className="studio-page">
       <header className="page-head page-head--split">
-        <div><h1 className="page-title">Put a look together</h1><p className="page-description">Pick from your closet. One piece, one place.</p></div>
+        <div><span className="eyebrow">03 / THE OUTFIT STUDIO</span><h1 className="page-title">Make it your own.</h1><p className="page-description">Pick a piece. Find a pairing. See what feels right.</p></div>
         <button
           type="button"
           className="btn btn--secondary"
@@ -229,6 +229,7 @@ export default function OotdPage() {
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="ootd">
           <div className="ootd__rails">
+            <div className="workspace-heading"><h2>Your pieces</h2><span>Click to wear</span></div>
             {CATEGORIES.map((category) => (
               <CategoryRail
                 key={category}
@@ -242,6 +243,7 @@ export default function OotdPage() {
           </div>
 
           <div className="ootd__stage">
+            <div className="workspace-heading"><h2>The look</h2><span>{worn.length} / 4 pieces</span></div>
             <OutfitCanvas
               slots={slots}
               selected={selected}
