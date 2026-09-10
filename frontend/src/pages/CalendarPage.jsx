@@ -9,7 +9,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-export default function CalendarPage() {
+export default function CalendarPage({ embedded = false }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1) // 1-12
@@ -87,8 +87,9 @@ export default function CalendarPage() {
 
   return (
     <div className="calendar-page">
-      <header className="page-head page-head--split"><div><span className="eyebrow">04 / THE DAILY ARCHIVE</span><h1 className="page-title">Days worth remembering.</h1><p className="page-description">Your outfits, one day at a time.</p></div><button className="btn btn--secondary" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1) }}>This month</button></header>
+      {!embedded && <header className="page-head page-head--split"><div><span className="eyebrow">04 / THE DAILY ARCHIVE</span><h1 className="page-title">Days worth remembering.</h1><p className="page-description">Your outfits, one day at a time.</p></div></header>}
       <header className="calendar-head">
+        <button className="btn btn--secondary" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1) }}>This month</button>
         <button
           type="button"
           className="calendar-nav"

@@ -1,5 +1,7 @@
 import OutfitZones from './OutfitZones.jsx'
 import { CATEGORY_ZONES } from '../constants.js'
+import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -14,19 +16,19 @@ function formatDate(iso) {
 }
 
 export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
+  const dialog = useRef(null)
+  useEffect(() => {
+    const element = dialog.current
+    element.showModal()
+    return () => element.close()
+  }, [])
   // Every part that carries a piece, so the empty ones keep their label.
   const filledZones = Object.fromEntries(
     (outfit?.items ?? []).map((item) => [item.garment.category, true]),
   )
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
+    <dialog ref={dialog} className="modal look-dialog" aria-label="Saved outfit" onCancel={onClose} onClick={e => { if (e.target === dialog.current) onClose() }}>
         <button
           type="button"
           className="modal__close"
@@ -67,6 +69,7 @@ export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
               </div>
 
               <div className="modal__aside">
+                <Link className="btn btn--primary" to={`/studio?outfit=${outfit.id}`}>Wear it again</Link>
                 {outfit.selfie_path && (
                   <img
                     className="modal__selfie"
@@ -87,7 +90,6 @@ export default function OutfitDetail({ outfit, loading, onClose, onDelete }) {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </dialog>
   )
 }

@@ -107,6 +107,13 @@ class Outfit(BaseModel):
 
 # ---------- Calendar ----------
 
+class OutfitPage(BaseModel):
+    items: List[Outfit]
+    total: int
+    page: int
+    pages: int
+
+
 
 class CalendarDay(BaseModel):
     date: date_type

@@ -2,7 +2,7 @@ import io
 import uuid
 from datetime import date as date_type
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
 from PIL import Image
 from sqlalchemy.orm import Session, joinedload
 
@@ -117,6 +117,23 @@ def list_outfits(
 
     query = query.order_by(models.Outfit.created_at.desc(), models.Outfit.id.desc())
     return query.all()
+
+
+@router.get("/browse", response_model=schemas.OutfitPage)
+def browse_outfits(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(12, ge=1, le=24),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    query = db.query(models.Outfit).filter(models.Outfit.user_id == current_user.id)
+    total = query.count()
+    pages = max(1, (total + page_size - 1) // page_size)
+    page = min(page, pages)
+    items = (query.options(ITEMS_QUERY_OPTS)
+             .order_by(models.Outfit.date.desc(), models.Outfit.id.desc())
+             .offset((page - 1) * page_size).limit(page_size).all())
+    return {"items": items, "total": total, "page": page, "pages": pages}
 
 
 @router.get("/{outfit_id}", response_model=schemas.Outfit)

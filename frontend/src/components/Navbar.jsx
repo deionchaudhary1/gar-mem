@@ -3,10 +3,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const links = [
-  { to: '/', label: 'Closet', end: true },
-  { to: '/upload', label: 'Upload' },
-  { to: '/ootd', label: 'Outfits' },
-  { to: '/calendar', label: 'Calendar' },
+  { to: '/', label: 'Today', end: true },
+  { to: '/wardrobe', label: 'Wardrobe' },
+  { to: '/studio', label: 'Studio' },
+  { to: '/journal', label: 'Journal' },
 ]
 
 export default function Navbar() {

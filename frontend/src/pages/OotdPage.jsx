@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import client from '../api/client.js'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import CategoryRail from '../components/CategoryRail.jsx'
 import OutfitCanvas from '../components/OutfitCanvas.jsx'
+import ShuffleIcon from '../components/ShuffleIcon.jsx'
 import {
   CATEGORIES,
   CATEGORY_ZONES,
@@ -31,6 +32,8 @@ const slotFor = (garment) => ({
 export default function OotdPage() {
   const [searchParams] = useSearchParams()
   const initialGarment = searchParams.get('garment')
+  const initialOutfit = searchParams.get('outfit')
+  const navigate = useNavigate()
   const [garments, setGarments] = useState([])
   const [slots, setSlots] = useState(emptySlots)
   const [selected, setSelected] = useState(null)
@@ -41,6 +44,19 @@ export default function OotdPage() {
   const [saving, setSaving] = useState(false)
   const canvasRef = useRef(null)
   const showToast = useToast()
+
+  useEffect(() => {
+    if (!initialOutfit || initialGarment) return
+    const controller = new AbortController()
+    client.get(`/outfits/${initialOutfit}`, { signal: controller.signal }).then(({ data }) => {
+      const next = emptySlots()
+      data.items.forEach(item => {
+        if (CATEGORIES.includes(item.garment.category)) next[item.garment.category] = slotFor(item.garment)
+      })
+      setSlots(next)
+    }).catch(() => { if (!controller.signal.aborted) showToast('That look could not be opened') })
+    return () => controller.abort()
+  }, [initialOutfit, initialGarment, showToast])
 
   useEffect(() => {
     if (!initialGarment) return
@@ -205,6 +221,7 @@ export default function OotdPage() {
       }
       showToast('Outfit saved')
       clearAll()
+      navigate(`/journal?outfit=${res.data.id}`)
     } catch {
       showToast('Could not save outfit')
     } finally {
@@ -218,11 +235,11 @@ export default function OotdPage() {
         <div><span className="eyebrow">03 / THE OUTFIT STUDIO</span><h1 className="page-title">Make it your own.</h1><p className="page-description">Pick a piece. Find a pairing. See what feels right.</p></div>
         <button
           type="button"
-          className="btn btn--secondary"
+          className="btn btn--secondary shuffle-all"
           onClick={rollAll}
           disabled={garments.length === 0}
         >
-          Shuffle everything
+          <ShuffleIcon /> Shuffle everything
         </button>
       </header>
 

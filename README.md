@@ -6,7 +6,22 @@ clicking pieces (or rolling a die) into a head-to-toe canvas, and browse your
 outfit history on a calendar.
 Every account is private: there is no feed, no following, and no sharing.
 
-## Stack
+## The personal style studio
+
+- **Today** (`/`): actual wardrobe totals, recent pieces, and the latest dated
+  saved look, with shortcuts to build or repeat an outfit.
+- **Wardrobe** (`/wardrobe`): scrolling shelves, category browsing and search.
+- **Studio** (`/studio`): click-to-wear outfit composition; saving opens the
+  new look in the Journal. “Wear it again” starts a new look using the same
+  garments; the original is not edited.
+- **Journal** (`/journal`): paginated saved-look gallery and calendar view.
+- Adding a piece (`/upload`) is a contextual action from Today or Wardrobe.
+
+Old `/ootd` and `/calendar` links still resolve; old root closet query links
+are redirected to `/wardrobe` with their filters intact. Journal reads use the
+owner-scoped `/api/outfits/browse` endpoint (maximum 24 looks per request).
+
+## Technology
 
 - **Backend** — FastAPI + SQLAlchemy + Alembic; SQLite by default, Postgres via
   `DATABASE_URL`; `withoutbg` for background removal; JWT session cookies
