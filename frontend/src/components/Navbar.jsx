@@ -47,8 +47,7 @@ export default function Navbar() {
         </nav>
 
         <div className="sidebar-note"><span className="sidebar-note__mark" aria-hidden="true">✳</span><p>Wear what<br /><em>feels like you.</em></p><span>A little less searching.<br />A little more getting dressed.</span></div>
-        {user?.local_testing && <span className="navbar__user testing-badge" title="No authentication. Local use only."><span aria-hidden="true">●</span> Local testing</span>}
-        {user && !user.local_testing && (
+        {user && (
           <div className="navbar__user">
             <button
               type="button"

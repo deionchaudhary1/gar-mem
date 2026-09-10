@@ -19,31 +19,8 @@ Every account is private: there is no feed, no following, and no sharing.
 
 ## Running
 
-### No-login testing branch
-
-On `codex/no-auth-testing`, run the actual app locally without authentication:
-
-```sh
-cd backend
-python3 -m uvicorn app.local_testing:app --host 127.0.0.1 --port 8011
-```
-
-In another terminal:
-
-```sh
-cd frontend
-API_PROXY_TARGET=http://127.0.0.1:8011 npm run dev -- --host 127.0.0.1 --port 5174
-```
-
-Open http://127.0.0.1:5174 — no login or signup needed. The navbar says
-“Local testing.” The four supplied photo fixtures are added on first startup;
-uploads, edits, and saved outfits persist across restarts in the gitignored
-`backend/.local-testing/` directory. Deleting a sample does not recreate it.
-This is a separate testing closet, not your existing account's data.
-
-**Local use only:** anyone who can reach this entry point can read and modify
-the testing closet. Do not deploy it, tunnel it, or bind it to `0.0.0.0`.
-The normal `app.main:app` entry point below still requires authentication.
+This branch (`codex/open-wardrobe`) requires authentication. The no-login local
+testing entry point is available only on `codex/no-auth-testing`.
 
 ### Authenticated application
 

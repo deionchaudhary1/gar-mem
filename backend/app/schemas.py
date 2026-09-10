@@ -13,7 +13,6 @@ class User(BaseModel):
 
     id: int
     username: str
-    local_testing: bool = False
     avatar_path: Optional[str] = None
     email: str
     created_at: datetime
