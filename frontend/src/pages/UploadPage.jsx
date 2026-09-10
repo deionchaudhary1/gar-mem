@@ -46,7 +46,7 @@ export default function UploadPage() {
       if (name.trim()) form.append('name', name.trim())
       await client.post('/garments/', form)
       showToast('Piece added to closet')
-      navigate('/')
+      navigate('/wardrobe')
     } catch {
       showToast('Upload failed — try again')
       setPending(false)
@@ -56,7 +56,7 @@ export default function UploadPage() {
   return (
     <div className="upload">
       <header className="page-head">
-        <span className="eyebrow">02 / SOMETHING NEW</span>
+        <span className="eyebrow">MAKE ROOM FOR SOMETHING NEW</span>
         <h1 className="page-title">Meet your next staple.</h1>
         <p className="page-description">One photo is all you need. We’ll take care of the background.</p>
       </header>
@@ -153,7 +153,7 @@ export default function UploadPage() {
         >
           {pending ? 'Processing…' : 'Add to closet'}
         </button>
-        <Link className="text-button" to="/">Back to closet</Link>
+        <Link className="text-button" to="/wardrobe">Back to wardrobe</Link>
         </div>
       </form>
     </div>

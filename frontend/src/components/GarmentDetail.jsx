@@ -20,7 +20,7 @@ export default function GarmentDetail({ garment, onClose, onDelete }) {
         <span className="eyebrow">{CATEGORY_LABELS[garment.category]}</span>
         <h2 id="piece-title">{garment.name}</h2>
         <p className="muted">Added {new Date(garment.created_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-        <Link className="btn btn--primary" to={`/ootd?garment=${garment.id}`}>Use in outfit</Link>
+        <Link className="btn btn--primary" to={`/studio?garment=${garment.id}`}>Use in outfit</Link>
         <button className="text-button text-button--danger" disabled={deleting} onClick={async () => {
           setDeleting(true)
           const removed = await onDelete(garment)

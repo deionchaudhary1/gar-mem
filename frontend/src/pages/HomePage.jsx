@@ -58,7 +58,7 @@ export default function HomePage() {
   return <div className="closet-page">
     <header className="page-head closet-toolbar">
       <div className="closet-heading">
-        <span className="eyebrow">01 / THE COLLECTION</span>
+        <span className="eyebrow">02 / THE COLLECTION</span>
         {expanded && <button className="text-button" onClick={() => update({ category: '', q: '', page: '', view: '' })}>← Back to closet</button>}
         <h1 className="page-title">{expanded ? (q ? 'Find your pieces' : CATEGORY_LABELS[category] || 'All pieces') : 'Your wardrobe.'}</h1>
         {!expanded && <p className="page-description">Everything you love wearing, in one place.</p>}

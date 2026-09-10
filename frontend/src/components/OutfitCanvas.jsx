@@ -121,7 +121,7 @@ export default function OutfitCanvas({
 
       {isEmpty && (
         <p className="outfit-canvas__hint">
-          Click a piece — or roll a die — to dress each slot.
+          Click a piece or shuffle a category to start your look.
         </p>
       )}
     </div>

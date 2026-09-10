@@ -2,6 +2,7 @@
 import io
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 from app import models
 from app.auth import create_session_token
 from app.database import Base, get_db
-from app.routers import garments
+from app.routers import garments, outfits
 from app.storage import LocalStorage
 
 
@@ -24,6 +25,7 @@ class WardrobeTests(unittest.TestCase):
         self.engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
         Base.metadata.create_all(self.engine)
         factory = sessionmaker(bind=self.engine)
+        self.factory = factory
         with factory() as db:
             db.add_all([models.User(id=i, username=f"user{i}", email=f"u{i}@example.com", password_hash="!") for i in (1, 2)])
             db.add_all([models.Garment(user_id=1, name=f"Blue linen {i}", category="tops", image_path="/uploads/garments/test.png") for i in range(101)])
@@ -35,6 +37,7 @@ class WardrobeTests(unittest.TestCase):
                 yield db
         app = FastAPI()
         app.include_router(garments.router)
+        app.include_router(outfits.router)
         app.dependency_overrides[get_db] = get_test_db
         self.client = TestClient(app)
         self.client.cookies.set("gm_session", create_session_token(1))
@@ -95,6 +98,32 @@ class WardrobeTests(unittest.TestCase):
                 self.assertEqual(result.mode, 'RGBA')
                 with self.assertRaises(FileNotFoundError):
                     LocalStorage().thumbnail('/uploads/../../outside.png')
+
+    def test_journal_browse_paging_and_ownership(self):
+        with self.factory() as db:
+            db.add_all([models.Outfit(user_id=1, date=date(2026, 1, i + 1)) for i in range(13)])
+            db.add(models.Outfit(user_id=2, date=date(2026, 12, 31)))
+            db.commit()
+        ids = []
+        for page in range(1, 4):
+            response = self.client.get(f'/api/outfits/browse?page_size=6&page={page}')
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual((data['total'], data['pages']), (13, 3))
+            self.assertTrue(all(item['user_id'] == 1 for item in data['items']))
+            ids.extend(item['id'] for item in data['items'])
+        self.assertEqual(len(set(ids)), 13)
+        first = self.client.get('/api/outfits/browse?page_size=1').json()['items'][0]
+        self.assertEqual(first['date'], '2026-01-13')
+        self.assertEqual(self.client.get('/api/outfits/browse?page_size=6&page=999').json()['page'], 3)
+
+    def test_journal_empty_auth_and_validation(self):
+        empty = self.client.get('/api/outfits/browse').json()
+        self.assertEqual((empty['total'], empty['pages'], empty['items']), (0, 1, []))
+        for query in ('page=0', 'page_size=25', 'page_size=-1'):
+            self.assertEqual(self.client.get('/api/outfits/browse?' + query).status_code, 422)
+        self.client.cookies.clear()
+        self.assertEqual(self.client.get('/api/outfits/browse').status_code, 401)
 
 
 if __name__ == '__main__':
