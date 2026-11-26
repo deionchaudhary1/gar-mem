@@ -6,6 +6,10 @@ clicking pieces (or rolling a die) into a head-to-toe canvas, and browse your
 outfit history on a calendar.
 Every account is private: there is no feed, no following, and no sharing.
 
+![Outfit composition in Garment Memory](docs/studio.png)
+
+This is the running application with four bundled sample garments in its isolated local demo. The sample closet needs no account, paid service, or background-removal model. [Today](docs/today.png) and [the saved outfit in Journal](docs/journal.png) show the completed save flow.
+
 ## The personal style studio
 
 - **Today** (`/`): actual wardrobe totals, recent pieces, and the latest dated
@@ -32,22 +36,43 @@ owner-scoped `/api/outfits/browse` endpoint (maximum 24 looks per request).
   within its own part. Every screen is sized to the viewport, so the page
   itself never scrolls; a crowded category scrolls sideways instead
 
-## Running
+## Architecture
 
-### No-login testing branch
-
-On `codex/no-auth-testing`, run the actual app locally without authentication:
-
-```sh
-cd backend
-python3 -m uvicorn app.local_testing:app --host 127.0.0.1 --port 8011
+```mermaid
+flowchart LR
+    UI[React wardrobe and studio] --> API[FastAPI routes]
+    API --> Owner[Authenticated owner or isolated demo user]
+    Owner --> DB[(SQLAlchemy and SQLite)]
+    API --> Files[Local image storage]
+    Files --> Model[Optional lazy background removal]
 ```
 
-In another terminal:
+Garment and outfit reads are scoped to an owner in SQL. Outfit composition stays in React until Save submits the selected garment IDs and transforms; the journal then reads the persisted outfit. The no-login entry point replaces the database/session dependencies and uses separate demo storage. It exercises the actual route code without changing the authenticated account's closet.
+
+The local demo and current browser screenshots verify composing four pieces, saving an outfit, viewing it after reload, and finding it on Today. Model-backed garment uploads and Postgres deployment were not exercised in that check.
+
+## Running
+
+Run the commands from the repository root in a POSIX shell. Use Node 20.19+ on
+the 20.x line, or Node 22.12+.
+
+### Local demo with sample garments
+
+Create a virtual environment and install the backend dependencies for browsing
+the sample garments and building outfits. The demo only needs `withoutbg` if
+you want to upload a new garment.
 
 ```sh
-cd frontend
-API_PROXY_TARGET=http://127.0.0.1:8011 npm run dev -- --host 127.0.0.1 --port 5174
+python3 -m venv .venv
+.venv/bin/python -m pip install fastapi uvicorn sqlalchemy python-multipart Pillow PyJWT bcrypt
+(cd backend && ../.venv/bin/python -m uvicorn app.local_testing:app --host 127.0.0.1 --port 8011)
+```
+
+In another terminal at the repository root, install and start the frontend.
+
+```sh
+npm --prefix frontend ci
+API_PROXY_TARGET=http://127.0.0.1:8011 npm --prefix frontend run dev -- --host 127.0.0.1 --port 5174
 ```
 
 Open http://127.0.0.1:5174 — no login or signup needed. The navbar says
@@ -62,12 +87,13 @@ The normal `app.main:app` entry point below still requires authentication.
 
 ### Authenticated application
 
-Backend (port 8010):
+Install the full backend requirements, including Alembic migrations and
+`withoutbg` for new garment uploads. Start the backend on port 8010.
 
 ```sh
-cd backend
-pip install -r requirements.txt
-python3 -m uvicorn app.main:app --reload --port 8010
+python3 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements.txt
+(cd backend && ../.venv/bin/python -m uvicorn app.main:app --reload --port 8010)
 ```
 
 Migrations run automatically at startup (pre-existing single-user databases are
@@ -75,22 +101,33 @@ stamped and upgraded in place; their old rows are owned by a locked `legacy`
 user). To make that pre-migration data yours, claim the account once:
 
 ```sh
-cd backend
-python3 -m app.claim_legacy <username> <email> <password>
+(cd backend && ../.venv/bin/python -m app.claim_legacy USERNAME EMAIL PASSWORD)
 ```
 
-Frontend (port 5173, proxies `/api` and `/uploads` to `localhost:8010`):
+In another terminal at the repository root, start the frontend. Vite proxies
+`/api` and `/uploads` to the backend on port 8010.
 
 ```sh
-cd frontend
-npm install
-npm run dev
+npm --prefix frontend ci
+API_PROXY_TARGET=http://127.0.0.1:8010 npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Then open http://localhost:5173 and sign up.
+Then open http://127.0.0.1:5173 and sign up.
 
-Note: the first garment upload lazily loads the background-removal model and can
-take a minute or two; subsequent uploads are fast.
+The first garment upload loads the background-removal model and can take a
+minute or two.
+
+### Verification
+
+With the local demo dependencies installed, add `httpx` and run the backend
+tests. They use a synthetic in-memory SQLite database and temporary image
+storage. The frontend build can run independently.
+
+```sh
+.venv/bin/python -m pip install httpx
+(cd backend && ../.venv/bin/python -m unittest discover -s tests -v)
+npm --prefix frontend run build
+```
 
 ## Configuration (env vars)
 
@@ -122,5 +159,6 @@ adding a second storage class there — no router changes.
   still creates the `follows`/`likes`/`comments` tables and the `is_public`
   columns; the app no longer reads or writes them.
 - `backend/uploads/` — stored images (gitignored)
-- `frontend/src/pages/` — Closet (`/`), Upload (`/upload`), outfit builder
-  (`/ootd`), Calendar (`/calendar`), plus `/login` and `/signup`
+- `frontend/src/pages/` — Today (`/`), Wardrobe (`/wardrobe`), Studio
+  (`/studio`), Journal (`/journal`), Upload (`/upload`), Login (`/login`),
+  and Signup (`/signup`)
